@@ -1,0 +1,104 @@
+export const translateGenre = (genre) => {
+  const map = {
+    'Action': 'Боевик', 'Adventure': 'Приключения', 'Comedy': 'Комедия', 'Drama': 'Драма',
+    'Fantasy': 'Фэнтези', 'Horror': 'Ужасы', 'Mystery': 'Детектив', 'Romance': 'Романтика',
+    'Sci-Fi': 'Фантастика', 'Slice of Life': 'Повседневность', 'Sports': 'Спорт',
+    'Supernatural': 'Сверхъестественное', 'Thriller': 'Триллер', 'Mecha': 'Меха',
+    'Music': 'Музыка', 'Psychological': 'Психологическое', 'Ecchi': 'Этти', 'Josei': 'Дзёсэй',
+    'Seinen': 'Сэйнэн', 'Shoujo': 'Сёдзё', 'Shounen': 'Сёнэн'
+  };
+  return map[genre] || genre;
+};
+
+export const translateFormat = (format) => {
+  const map = { 'TV': 'ТВ', 'TV_SHORT': 'ТВ-короткий', 'OVA': 'OVA', 'ONA': 'ONA', 'MOVIE': 'Фильм', 'SPECIAL': 'Спешл', 'MUSIC': 'Клип' };
+  return map[format] || format;
+};
+
+export const translateStatus = (status) => {
+  const map = { 'RELEASING': 'Онгоинг', 'FINISHED': 'Завершено', 'NOT_YET_RELEASED': 'Анонс', 'CANCELLED': 'Отменено' };
+  return map[status] || status;
+};
+
+// --- ЖЕСТКИЙ СБРОС КЭША (v5) ---
+const CACHE_VERSION = 'v5_force_ru';
+if (localStorage.getItem('anibox_cache_version') !== CACHE_VERSION) {
+  localStorage.removeItem('anibox_title_cache');
+  localStorage.setItem('anibox_cache_version', CACHE_VERSION);
+}
+
+// --- ПЕРЕВОД ОПИСАНИЙ ---
+const textCache = JSON.parse(localStorage.getItem('anibox_text_cache') || '{}');
+export async function translateText(text) {
+  if (!text) return '';
+  if (/[а-яА-ЯЁё]/.test(text)) return text; 
+  if (textCache[text]) return textCache[text];
+
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ru&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data[0] && data[0][0]) {
+        const result = data[0].map(item => item[0]).join('');
+        if (!result.includes('QUERY LENGTH')) {
+          textCache[text] = result;
+          localStorage.setItem('anibox_text_cache', JSON.stringify(textCache));
+          return result;
+        }
+      }
+    }
+  } catch (e) {}
+  return text;
+}
+
+// --- ОЧЕРЕДЬ ДЛЯ НАЗВАНИЙ ---
+const queue = [];
+let isProcessing = false;
+
+async function processQueue() {
+  if (isProcessing || queue.length === 0) return;
+  isProcessing = true;
+
+  const task = queue.shift();
+  try {
+    let result = task.original; // По умолчанию английское
+    
+    if (window.api && task.titlesArray) {
+      const apiRes = await window.api.getRuTitle(task.titlesArray);
+      
+      // Если API вернуло нормальное русское название
+      if (apiRes && /[а-яА-ЯЁё]/.test(apiRes)) {
+        result = apiRes;
+        // Сохраняем в кэш ТОЛЬКО если это РУССКОЕ название
+        const titleCache = JSON.parse(localStorage.getItem('anibox_title_cache') || '{}');
+        titleCache[task.original] = result;
+        localStorage.setItem('anibox_title_cache', JSON.stringify(titleCache));
+      }
+    }
+    task.resolve(result);
+  } catch (err) {
+    task.resolve(task.original);
+  }
+
+  // Задержка 500мс
+  await new Promise(r => setTimeout(r, 500));
+  isProcessing = false;
+  processQueue();
+}
+
+export function translateTitle(title, titlesArray) {
+  if (!title) return Promise.resolve('');
+  
+  const titleCache = JSON.parse(localStorage.getItem('anibox_title_cache') || '{}');
+  
+  // Берем из кэша, только если там уже есть РУССКОЕ название
+  if (titleCache[title] && /[а-яА-ЯЁё]/.test(titleCache[title])) {
+    return Promise.resolve(titleCache[title]);
+  }
+
+  return new Promise((resolve) => {
+    queue.push({ original: title, titlesArray, resolve });
+    processQueue();
+  });
+}
