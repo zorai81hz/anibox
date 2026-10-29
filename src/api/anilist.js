@@ -1,7 +1,8 @@
-const URL = 'https://graphql.anilist.co';
+const URL = 'https://corsproxy.io/?https://graphql.anilist.co';
 
 const MEDIA_FIELDS = `
   id
+ idMal
   title { romaji english native }
   coverImage { extraLarge large }
   bannerImage
@@ -27,17 +28,25 @@ async function gql(query, variables) {
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ query, variables }),
   });
-  if (!res.ok) throw new Error('AniList API error: ' + res.status);
+  
+  if (!res.ok) {
+    if (res.status === 429) {
+      throw new Error('Слишком много запросов к AniList. Подождите немного.');
+    }
+    throw new Error('AniList API error: ' + res.status);
+  }
+  
   const json = await res.json();
   if (json.errors) throw new Error(json.errors[0].message);
   return json.data;
 }
 
+
 export async function searchAnime(search, page = 1) {
   const query = `
     query ($search: String, $page: Int) {
       Page(page: $page, perPage: 24) {
-        media(search: $search, type: ANIME, sort: POPULARITY_DESC, isAdult: false) {
+        media(search: $search, type: ANIME, sort: SEARCH_MATCH, isAdult: false) {
           ${MEDIA_FIELDS}
         }
       }

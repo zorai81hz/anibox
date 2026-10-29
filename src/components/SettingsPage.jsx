@@ -1,120 +1,254 @@
-import { useState } from 'react';
-import { Settings, Trash2, Sun, Moon, Globe, Palette, PlayCircle, Database, Download, Upload } from 'lucide-react';
-
-const Toggle = ({ enabled, onChange }) => (
-  <button onClick={() => onChange(!enabled)} className={`w-12 h-6 rounded-full transition-colors relative flex items-center ${enabled ? 'bg-purple-600' : 'bg-[#2a2a3a]'}`}>
-    <div className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform ${enabled ? 'translate-x-7' : 'translate-x-1'}`} />
-  </button>
-);
+import { useState, useEffect } from 'react';
+import { Palette, MonitorPlay, Database, Sun, Moon, Trash2, Download, Upload, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function SettingsPage() {
-  const [theme, setTheme] = useState(localStorage.getItem('setting_theme') || 'dark');
-  const [lang, setLang] = useState(localStorage.getItem('setting_lang') || 'ru');
-  const [autoplay, setAutoplay] = useState(localStorage.getItem('setting_autoplay') !== 'false');
-  const [defaultQuality, setDefaultQuality] = useState(localStorage.getItem('setting_quality') || '1080p');
+  const [theme, setTheme] = useState(() => localStorage.getItem('anibox_theme') || 'dark');
+  const [autoplay, setAutoplay] = useState(() => localStorage.getItem('anibox_autoplay') !== 'false');
+  const [quality, setQuality] = useState(() => localStorage.getItem('anibox_quality') || '1080p');
+  
+  // Состояния для модалки сброса
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
 
-  const save = (key, value, setter) => {
-    setter(value);
-    localStorage.setItem(key, value);
-  };
+  useEffect(() => {
+    localStorage.setItem('anibox_theme', theme);
+    localStorage.setItem('anibox_autoplay', autoplay);
+    localStorage.setItem('anibox_quality', quality);
 
-  const clearCache = () => {
-    if(confirm('ВНИМАНИЕ! Это удалит всю библиотеку, историю и достижения. Продолжить?')) {
-      localStorage.removeItem('anibox_library');
-      localStorage.removeItem('anibox_achievements');
-      window.location.reload();
+    // Применяем тему к HTML тегу
+    if (theme === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+  }, [theme, autoplay, quality]);
+
+  useEffect(() => {
+    localStorage.setItem('anibox_theme', theme);
+    localStorage.setItem('anibox_autoplay', autoplay);
+    localStorage.setItem('anibox_quality', quality);
+
+    // 1. Меняем CSS для React
+    if (theme === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+
+    // 2. Меняем тему для рамки Windows (САМОЕ ВАЖНОЕ)
+    if (window.api && window.api.setTheme) {
+      window.api.setTheme(theme);
+    }
+  }, [theme, autoplay, quality]);
+  
+  // 1. ОЧИСТКА КЭША (безопасная)
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      if (window.api && window.api.clearCache) {
+        await window.api.clearCache();
+      }
+      setTimeout(() => {
+        setIsClearingCache(false);
+        alert('Кэш успешно очищен! Приложение будет работать быстрее.');
+      }, 500);
+    } catch (e) {
+      setIsClearingCache(false);
+      alert('Ошибка при очистке кэша');
     }
   };
 
-  const exportData = () => {
-    const data = { library: JSON.parse(localStorage.getItem('anibox_library') || '{}'), achievements: JSON.parse(localStorage.getItem('anibox_achievements') || '[]') };
+  // 2. ПОЛНЫЙ СБРОС ВСЕГО (опасный)
+  const handleResetAll = () => {
+    localStorage.clear();
+    window.location.reload();
+  };
+
+  // Экспорт/Импорт остаются без изменений
+  const handleExport = () => {
+    const data = {
+      library: JSON.parse(localStorage.getItem('anibox_library') || '{}'),
+      history: JSON.parse(localStorage.getItem('anibox_history') || '[]'),
+      achievements: JSON.parse(localStorage.getItem('anibox_achievements') || '[]'),
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `anibox_backup.json`; a.click();
+    a.href = url;
+    a.download = `anibox_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const importData = (e) => {
-    const file = e.target.files[0]; if (!file) return;
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target.result);
         if (data.library) localStorage.setItem('anibox_library', JSON.stringify(data.library));
+        if (data.history) localStorage.setItem('anibox_history', JSON.stringify(data.history));
         if (data.achievements) localStorage.setItem('anibox_achievements', JSON.stringify(data.achievements));
-        alert('Данные импортированы!');
+        alert('Библиотека успешно восстановлена!');
         window.location.reload();
-      } catch (err) { alert('Ошибка файла'); }
+      } catch (err) {
+        alert('Ошибка: Неверный формат файла!');
+      }
     };
     reader.readAsText(file);
   };
 
   return (
-    <div className="animate-fade-in max-w-4xl pb-20">
-      <div className="flex items-center gap-3 mb-8">
-        <Settings className="text-purple-500" size={32} />
-        <h2 className="text-3xl font-bold text-white">Настройки</h2>
-      </div>
+    <div className="max-w-4xl relative">
+      <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
+        <Palette className="text-purple-500" /> Настройки
+      </h2>
 
       <div className="space-y-6">
         {/* ВНЕШНИЙ ВИД */}
-        <section className="bg-[#0f0f17] border border-white/5 rounded-2xl overflow-hidden">
-          <div className="p-6 border-b border-white/5 flex items-center gap-2"><Palette className="text-purple-400" size={20} /><h3 className="text-lg font-bold text-white">Внешний вид</h3></div>
-          
-          <div className="p-6 flex items-center justify-between border-b border-white/5">
-            <div><h4 className="text-white font-medium">Тема оформления</h4><p className="text-slate-500 text-sm">Цвет фона</p></div>
-            <div className="flex bg-[#15151f] rounded-lg p-1 border border-white/5">
-              <button onClick={() => save('setting_theme', 'dark', setTheme)} className={`px-4 py-2 rounded-md transition flex items-center gap-2 text-sm font-medium ${theme === 'dark' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}><Moon size={16} /> Тёмная</button>
-              <button onClick={() => save('setting_theme', 'light', setTheme)} className={`px-4 py-2 rounded-md transition flex items-center gap-2 text-sm font-medium ${theme === 'light' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}><Sun size={16} /> Светлая</button>
+        <div className="bg-[#15151f] border border-[#1f1f2e] rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-[#1f1f2e] flex items-center gap-2 bg-[#1a1a24]">
+            <Palette size={18} className="text-purple-400" />
+            <h3 className="font-bold text-white">Внешний вид</h3>
+          </div>
+          <div className="p-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-white">Тема оформления</p>
+                <p className="text-sm text-slate-500">Цвет фона</p>
+              </div>
+              <div className="flex bg-[#0a0a0f] rounded-lg p-1 border border-[#1f1f2e]">
+                <button onClick={() => setTheme('dark')} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition ${theme === 'dark' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}><Moon size={16} /> Тёмная</button>
+                <button onClick={() => setTheme('light')} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition ${theme === 'light' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}><Sun size={16} /> Светлая</button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-white">Язык интерфейса</p>
+                <p className="text-sm text-slate-500">Язык меню</p>
+              </div>
+              <select className="bg-[#0a0a0f] border border-[#1f1f2e] text-white rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500">
+                <option value="ru">Русский</option>
+                <option value="en">English</option>
+              </select>
             </div>
           </div>
-
-          <div className="p-6 flex items-center justify-between">
-            <div><h4 className="text-white font-medium">Язык интерфейса</h4><p className="text-slate-500 text-sm">Язык меню</p></div>
-            <select value={lang} onChange={(e) => save('setting_lang', e.target.value, setLang)} className="bg-[#15151f] text-white px-4 py-2 rounded-lg outline-none border border-white/10">
-              <option value="ru">Русский</option>
-              <option value="en">English</option>
-            </select>
-          </div>
-        </section>
+        </div>
 
         {/* ВОСПРОИЗВЕДЕНИЕ */}
-        <section className="bg-[#0f0f17] border border-white/5 rounded-2xl overflow-hidden">
-          <div className="p-6 border-b border-white/5 flex items-center gap-2"><PlayCircle className="text-blue-400" size={20} /><h3 className="text-lg font-bold text-white">Воспроизведение</h3></div>
-          
-          <div className="p-6 flex items-center justify-between border-b border-white/5">
-            <div><h4 className="text-white font-medium">Автовоспроизведение</h4><p className="text-slate-500 text-sm">Следующая серия автоматом</p></div>
-            <Toggle enabled={autoplay} onChange={(val) => save('setting_autoplay', val, setAutoplay)} />
+        <div className="bg-[#15151f] border border-[#1f1f2e] rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-[#1f1f2e] flex items-center gap-2 bg-[#1a1a24]">
+            <MonitorPlay size={18} className="text-blue-400" />
+            <h3 className="font-bold text-white">Воспроизведение</h3>
           </div>
-
-          <div className="p-6 flex items-center justify-between">
-            <div><h4 className="text-white font-medium">Качество по умолчанию</h4><p className="text-slate-500 text-sm">Для загрузки видео</p></div>
-            <select value={defaultQuality} onChange={(e) => save('setting_quality', e.target.value, setDefaultQuality)} className="bg-[#15151f] text-white px-4 py-2 rounded-lg outline-none border border-white/10">
-              <option value="1080p">1080p (Full HD)</option>
-              <option value="720p">720p (HD)</option>
-              <option value="480p">480p (SD)</option>
-            </select>
-          </div>
-        </section>
-
-        {/* ДАННЫЕ */}
-        <section className="bg-[#0f0f17] border border-white/5 rounded-2xl overflow-hidden">
-          <div className="p-6 border-b border-white/5 flex items-center gap-2"><Database className="text-green-400" size={20} /><h3 className="text-lg font-bold text-white">Данные</h3></div>
-          
-          <div className="p-6 flex items-center justify-between border-b border-white/5">
-            <div><h4 className="text-white font-medium">Резервная копия</h4><p className="text-slate-500 text-sm">Сохранить вашу библиотеку</p></div>
-            <div className="flex gap-3">
-              <button onClick={exportData} className="flex items-center gap-2 px-4 py-2 bg-[#15151f] hover:bg-[#2a2a3a] border border-white/10 text-white rounded-lg transition text-sm"><Download size={16} /> Экспорт</button>
-              <label className="flex items-center gap-2 px-4 py-2 bg-[#15151f] hover:bg-[#2a2a3a] border border-white/10 text-white rounded-lg transition text-sm cursor-pointer"><Upload size={16} /> Импорт<input type="file" accept=".json" onChange={importData} className="hidden" /></label>
+          <div className="p-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-white">Автовоспроизведение</p>
+                <p className="text-sm text-slate-500">Следующая серия автоматом</p>
+              </div>
+              <button onClick={() => setAutoplay(!autoplay)} className={`w-14 h-7 rounded-full relative transition-colors duration-300 ${autoplay ? 'bg-purple-600' : 'bg-slate-600'}`}>
+                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all duration-300 ${autoplay ? 'left-8' : 'left-1'}`}></div>
+              </button>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-white">Качество по умолчанию</p>
+                <p className="text-sm text-slate-500">Для загрузки видео</p>
+              </div>
+              <select value={quality} onChange={(e) => setQuality(e.target.value)} className="bg-[#0a0a0f] border border-[#1f1f2e] text-white rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500">
+                <option value="1080p">1080p (Full HD)</option>
+                <option value="720p">720p (HD)</option>
+                <option value="480p">480p (SD)</option>
+              </select>
             </div>
           </div>
+        </div>
 
-          <div className="p-6 flex items-center justify-between">
-            <div><h4 className="text-red-400 font-medium">Очистить кэш</h4><p className="text-slate-500 text-sm">Удалить историю и достижения</p></div>
-            <button onClick={clearCache} className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition text-sm font-medium"><Trash2 size={16} /> Очистить</button>
+        {/* ДАННЫЕ */}
+        <div className="bg-[#15151f] border border-[#1f1f2e] rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-[#1f1f2e] flex items-center gap-2 bg-[#1a1a24]">
+            <Database size={18} className="text-green-400" />
+            <h3 className="font-bold text-white">Данные</h3>
           </div>
-        </section>
+          <div className="p-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-white">Резервная копия</p>
+                <p className="text-sm text-slate-500">Сохранить вашу библиотеку</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-[#0a0a0f] hover:bg-[#1f1f2e] border border-[#1f1f2e] text-white rounded-lg text-sm transition"><Download size={16} /> Экспорт</button>
+                <label className="flex items-center gap-2 px-4 py-2 bg-[#0a0a0f] hover:bg-[#1f1f2e] border border-[#1f1f2e] text-white rounded-lg text-sm transition cursor-pointer">
+                  <Upload size={16} /> Импорт
+                  <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+                </label>
+              </div>
+            </div>
+
+            {/* ОЧИСТКА КЭША */}
+            <div className="flex items-center justify-between pt-4 border-t border-[#1f1f2e]">
+              <div>
+                <p className="font-semibold text-white">Очистить кэш</p>
+                <p className="text-sm text-slate-500">Ускорить работу приложения</p>
+              </div>
+              <button onClick={handleClearCache} disabled={isClearingCache} className="flex items-center gap-2 px-4 py-2 bg-[#0a0a0f] hover:bg-[#1f1f2e] border border-[#1f1f2e] text-white rounded-lg text-sm font-medium transition disabled:opacity-50">
+                {isClearingCache ? 'Очистка...' : <><Trash2 size={16} /> Очистить</>}
+              </button>
+            </div>
+
+            {/* ПОЛНЫЙ СБРОС */}
+            <div className="flex items-center justify-between pt-4 border-t border-[#1f1f2e]">
+              <div>
+                <p className="font-semibold text-red-400">Сбросить всё</p>
+                <p className="text-sm text-slate-500">Удалить историю и достижения</p>
+              </div>
+              <button onClick={() => setShowResetModal(true)} className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg text-sm font-medium transition">
+                <ShieldAlert size={16} /> Сбросить
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ СБРОСА */}
+      <AnimatePresence>
+        {showResetModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={() => setShowResetModal(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-[#15151f] border border-red-500/30 rounded-2xl p-6 w-full max-w-md shadow-2xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <AlertTriangle className="text-red-500" size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-white">Вы уверены?</h3>
+              </div>
+              
+              <p className="text-slate-300 mb-6 text-sm leading-relaxed">
+                Это действие <span className="font-bold text-red-400">необратимо</span>. Вся ваша история просмотров, библиотека и полученные достижения будут удалены навсегда.
+              </p>
+              
+              <div className="flex gap-3">
+                <button onClick={() => setShowResetModal(false)} className="flex-1 py-2.5 bg-[#1f1f2e] hover:bg-[#2a2a3e] text-white rounded-xl font-semibold transition">
+                  Отмена
+                </button>
+                <button onClick={handleResetAll} className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl font-semibold transition shadow-lg shadow-red-600/20">
+                  Да, удалить всё
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,106 +1,167 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import fetch from 'node-fetch';
+import { randomUUID } from 'crypto';
+import https from 'https'; // <--- ДОБАВИЛИ ЭТО
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+dotenv.config();
 
-// Список популярных аниме (можешь добавить свои)
-const animeList = [
-  { title: 'One Piece', match: ['one piece', 'ван пис', 'ванпис'] },
-  { title: 'Naruto', match: ['naruto', 'наруто'] },
-  { title: 'Bleach', match: ['bleach', 'блич'] },
-  { title: 'Attack on Titan', match: ['shingeki no kyojin', 'attack on titan', 'атака титанов'] },
-  { title: 'Jujutsu Kaisen', match: ['jujutsu kaisen', 'магическая битва'] },
-  { title: 'Demon Slayer', match: ['kimetsu no yaiba', 'demon slayer', 'клинок'] },
-  { title: 'Death Note', match: ['death note', 'тетрадь смерти'] },
-  { title: 'Fullmetal Alchemist', match: ['fullmetal alchemist', 'стальной алхимик'] },
-  { title: 'Hunter x Hunter', match: ['hunter x hunter', 'охотник'] },
-  { title: 'Tokyo Ghoul', match: ['tokyo ghoul', 'токийский гуль'] },
-  { title: 'Sword Art Online', match: ['sword art online', 'мастера меча'] },
-  { title: 'My Hero Academia', match: ['boku no hero academia', 'моя геройская'] },
-  { title: 'Chainsaw Man', match: ['chainsaw man', 'человек-бензопила'] },
-  { title: 'Spy x Family', match: ['spy x family', 'семья шпиона'] },
-  { title: 'JoJo\'s Bizarre Adventure', match: ['jojo', 'джоджо'] },
-  { title: 'Steins;Gate', match: ['steins gate', 'врата штейна'] },
-  { title: 'Code Geass', match: ['code geass', 'код гиас'] },
-  { title: 'Evangelion', match: ['evangelion', 'евангелион'] },
-  { title: 'Gintama', match: ['gintama', 'гинтама'] },
-  { title: 'Haikyuu!!', match: ['haikyuu', 'волейбол'] },
-  { title: 'Kuroko no Basket', match: ['kuroko no basket', 'баскетбол куроко'] },
-  { title: 'Fairy Tail', match: ['fairy tail', 'хвост феи'] },
-  { title: 'Black Clover', match: ['black clover', 'черный клевер'] },
-  { title: 'Seven Deadly Sins', match: ['nanatsu no taizai', 'семь смертных грехов'] },
-  { title: 'Mob Psycho 100', match: ['mob psycho 100', 'моб психо'] },
-  { title: 'Re:Zero', match: ['re zero', 're:zero', 'жизнь с нуля'] },
-  { title: 'Overlord', match: ['overlord', 'оверлорд'] },
-  { title: 'Konosuba', match: ['konosuba', 'замечательный мир'] },
-  { title: 'Shield Hero', match: ['tate no yuusha', 'восхождение героя щита'] },
-  { title: 'Mushoku Tensei', match: ['mushoku tensei', 'реинкарнация безработного'] },
-  { title: 'Slime', match: ['tensei shitara slime', 'перерождении в слизь'] },
-  { title: 'Vinland Saga', match: ['vinland saga', 'сага о винланде'] },
-  { title: 'Violet Evergarden', match: ['violet evergarden', 'вайолет'] },
-  { title: 'Your Name', match: ['kimi no na wa', 'твое имя'] },
-  { title: 'Weathering With You', match: ['tenki no ko', 'дитя погоды'] },
-  { title: 'Suzume', match: ['suzume', 'судзумэ'] },
-  { title: 'Spirited Away', match: ['spirited away', 'унесенные призраками'] },
-  { title: 'Princess Mononoke', match: ['mononoke hime', 'принцесса мононоке'] },
-  { title: 'Howl\'s Moving Castle', match: ['howl', 'ходячий замок'] },
-  { title: 'Cyberpunk Edgerunners', match: ['cyberpunk', 'киберпанк'] },
-  { title: 'Bocchi the Rock', match: ['bocchi', 'одинокий рокер'] },
-  { title: 'Oshi no Ko', match: ['oshi no ko', 'звездный ребенок'] },
-  { title: 'Frieren', match: ['frieren', 'фрирен'] },
-  { title: 'Dungeon Meshi', match: ['dungeon meshi', 'подземелье вкусностей'] },
-  { title: 'Solo Leveling', match: ['solo leveling', 'поднятие уровня'] },
-  { title: 'Blue Lock', match: ['blue lock', 'синяя тюрьма'] },
-  { title: 'Dandadan', match: ['dandadan', 'дандадан'] },
-  { title: 'Kaiju No. 8', match: ['kaijuu 8', 'кайдзю'] },
-  { title: 'Hell\'s Paradise', match: ['jigokuraku', 'адский рай'] },
-  { title: 'Mashle', match: ['mashle', 'магия и мускулы'] }
-];
+const GIGACHAT_KEY = process.env.GIGACHAT_KEY;
 
-// Серии, для которых генерируем достижения
-const episodes = [1, 2, 3, 4, 5, 10, 20, 50, 100, 500];
-// Таймкоды (в секундах): 1 мин, 3 мин, 5 мин... до 19 минут
-const timecodes = [60, 180, 300, 420, 540, 660, 780, 900, 1020, 1140];
+if (!GIGACHAT_KEY) {
+  console.error('❌ Ошибка: Не найден GIGACHAT_KEY в файле .env');
+  process.exit(1);
+}
 
-// Шаблоны названий и описаний
-const titles = ['Начало пути', 'Первый шаг', 'Втянулся', 'Продолжаем', 'Фанат', 'Хардкор', 'Легенда', 'Марафонец', 'Одержимый', 'Бессмертный'];
-const descriptions = ['Вы посмотрели до', 'Вы дошли до', 'Вы осилили', 'Вы продержались до'];
+// Создаем агента, который игнорирует ошибки сертификатов (для Сбера)
+const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-const achievements = [];
-
-animeList.forEach(anime => {
-  episodes.forEach((ep, epIndex) => {
-    timecodes.forEach((time, timeIndex) => {
-      // Пропускаем некоторые комбинации, чтобы не было слишком много однотипных
-      if (timeIndex % 2 !== 0 && epIndex % 2 !== 0) return; 
-
-      const id = `${anime.title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_ep${ep}_time${time}`;
-      
-      const randomTitle = titles[Math.floor(Math.random() * titles.length)];
-      const randomDesc = descriptions[Math.floor(Math.random() * descriptions.length)];
-      const minutes = Math.floor(time / 60);
-      const seconds = time % 60 < 10 ? `0${time % 60}` : time % 60;
-
-      achievements.push({
-        id,
-        animeTitleMatch: anime.match,
-        episode: ep,
-        time: time,
-        title: `${randomTitle}: ${anime.title}`,
-        desc: `${randomDesc} ${minutes}:${seconds} серии ${ep}.`,
-        // Используем плейсхолдер (картинку можно заменить потом)
-        image: `https://placehold.co/200x200/1a1a25/9333ea?text=${encodeURIComponent(anime.title)}`
-      });
-    });
+// 1. Получаем токен доступа
+async function getGigaChatToken() {
+  console.log('⏳ Авторизация в GigaChat...');
+  const response = await fetch('https://ngw.devices.sberbank.ru:9443/api/v2/oauth', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Accept': 'application/json',
+      'RqUID': randomUUID(),
+      'Authorization': `Basic ${GIGACHAT_KEY}`
+    },
+    body: 'scope=GIGACHAT_API_PERS',
+    agent: httpsAgent // <--- ДОБАВИЛИ ЭТО
   });
-});
 
-// Запись файла
-const outputPath = path.join(__dirname, '..', 'src', 'data', 'achievementsData.js');
-const content = `export const TIMECODE_ACHIEVEMENTS = ${JSON.stringify(achievements, null, 2)};\n`;
-fs.writeFileSync(outputPath, content, 'utf-8');
+  if (!response.ok) {
+    throw new Error(`Ошибка авторизации: ${response.status} ${response.statusText}`);
+  }
 
-console.log(`✅ Сгенерировано ${achievements.length} достижений!`);
-console.log(`📁 Файл: src/data/achievementsData.js`);
+  const data = await response.json();
+  return data.access_token;
+}
+
+// 2. Простой парсер SRT файлов
+function parseSRT(srtContent) {
+  const blocks = srtContent.replace(/\r\n/g, '\n').split('\n\n');
+  const subtitles = [];
+  
+  for (const block of blocks) {
+    const lines = block.split('\n');
+    if (lines.length >= 3) {
+      const timeStr = lines[1];
+      const text = lines.slice(2).join(' ').replace(/<[^>]*>/g, '');
+      if (timeStr && timeStr.includes('-->')) {
+        const [start] = timeStr.split(' --> ');
+        subtitles.push(`[${start.trim()}] ${text}`);
+      }
+    }
+  }
+  return subtitles.join('\n');
+}
+
+// 3. Отправляем запрос к GigaChat
+async function analyzeSubtitles(srtText, animeTitle, episode) {
+  console.log(`🧠 Отправляем субтитры в GigaChat для анализа...`);
+  const token = await getGigaChatToken();
+
+  const lines = srtText.split('\n');
+  const sampledLines = lines.filter((_, i) => i % 5 === 0).join('\n');
+
+  const prompt = `
+Ты — эксперт по аниме. Вот фрагменты субтитров к аниме "${animeTitle}" (серия ${episode}).
+Найди 5-10 ключевых сюжетных моментов (знакомства, драки, важные реплики).
+Формат ответа СТРОГО JSON массив, без markdown, без лишних слов. Только массив!
+Пример формата:
+[
+  {
+    "time": "00:17:41",
+    "title": "Знакомство с Дио",
+    "desc": "Дио переступил порог дома Джостаров"
+  }
+]
+
+Вот субтитры:
+${sampledLines}
+`;
+
+  const response = await fetch('https://gigachat.devices.sberbank.ru/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      model: 'GigaChat:latest',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 1500
+    }),
+    agent: httpsAgent // <--- ДОБАВИЛИ ЭТО
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Ошибка GigaChat: ${response.status} - ${errText}`);
+  }
+
+  const data = await response.json();
+   let resultText = data.choices[0].message.content;
+  
+  // Умный поиск JSON массива (находим первую [ и последнюю ])
+  const startIdx = resultText.indexOf('[');
+  const endIdx = resultText.lastIndexOf(']');
+  
+  if (startIdx !== -1 && endIdx !== -1) {
+    resultText = resultText.substring(startIdx, endIdx + 1);
+  }
+  
+  try {
+    return JSON.parse(resultText);
+  } catch (e) {
+    console.error('❌ GigaChat вернул невалидный JSON:', resultText);
+    throw e;
+  } 
+
+// 4. Главная функция
+async function main() {
+  const testSrtPath = path.join(process.cwd(), 'scripts', 'test.srt');
+  const animeTitle = "JoJo's Bizarre Adventure";
+  const episode = 1;
+
+  if (!fs.existsSync(testSrtPath)) {
+    const fakeSrt = `1
+00:17:40,000 --> 00:17:45,000
+Я — Дио Брандо!
+
+2
+00:18:00,000 --> 00:18:05,000
+Джостары, я уничтожу ваш род!
+
+3
+00:19:00,000 --> 00:19:05,000
+Ты пожалеешь об этом, Дио!`;
+    fs.writeFileSync(testSrtPath, fakeSrt, 'utf8');
+  }
+
+  const srtContent = fs.readFileSync(testSrtPath, 'utf8');
+  const parsedSubs = parseSRT(srtContent);
+
+  try {
+    const achievements = await analyzeSubtitles(parsedSubs, animeTitle, episode);
+    
+    const outDir = path.join(process.cwd(), 'src', 'data', 'achievements');
+    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+
+    const outPath = path.join(outDir, 'test_achievements.json');
+    fs.writeFileSync(outPath, JSON.stringify(achievements, null, 2), 'utf8');
+
+    console.log(`\n🎉 УСПЕХ! Сгенерировано ${achievements.length} ачивок.`);
+    console.log(`📁 Сохранено в: ${outPath}`);
+    console.log(achievements);
+  } catch (error) {
+    console.error('❌ Ошибка при генерации:', error.message);
+  }
+}
+
+main()}

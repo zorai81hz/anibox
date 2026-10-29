@@ -2,18 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
+:root {
+  color-scheme: dark;
+}
 
+/* Базовые стили (Темная тема по умолчанию) */
 body {
   @apply bg-[#0a0a0f] text-slate-100 antialiased;
   font-family: system-ui, -apple-system, sans-serif;
 }
 
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { @apply bg-[#0a0a0f]; }
-::-webkit-scrollbar-thumb { @apply bg-[#2a2a3a] rounded-full; }
-::-webkit-scrollbar-thumb:hover { @apply bg-[#3a3a4a]; }
+/* Кастомный скроллбар */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-[#0a0a0f];
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-[#2a2a3a] rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-[#3a3a4a];
+}
 
+/* Обрезка текста (Line Clamp) */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -26,34 +40,79 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+
+/* ==================== СВЕТЛАЯ ТЕМА (ФИНАЛ) ==================== */
+html.light body {
+  background-color: #f1f5f9 !important;
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
+/* 1. Убиваем ВСЕ темные фоны */
+html.light [class*="bg-[#0a0a0f]"],
+html.light [class*="bg-[#0f0f17]"],
+html.light [class*="bg-[#15151f]"],
+html.light [class*="bg-[#1a1a24]"],
+html.light [class*="bg-[#1f1f2e]"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
 }
 
-/* Кастомный скроллбар для списка серий */
-.episodes-scroll::-webkit-scrollbar {
-  width: 6px;
+/* 2. ВЕСЬ текст делаем темным (включая белый) */
+html.light [class*="text-white"],
+html.light [class*="text-slate-100"],
+html.light [class*="text-slate-200"],
+html.light [class*="text-slate-300"],
+html.light [class*="text-slate-400"],
+html.light [class*="text-slate-500"] {
+  color: #0f172a !important;
 }
-.episodes-scroll::-webkit-scrollbar-thumb {
-   background-color: #9333ea; /* фиолетовый цвет */
-  border-radius: 9999px;
+
+/* 3. Логотип AniBox (в сайдбаре) */
+html.light h1[class*="bg-gradient-to-r"] {
+  background-image: none !important;
+  color: #7c3aed !important;
+  -webkit-text-fill-color: #7c3aed !important;
 }
-/* Красивый скроллбар для всего приложения */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
+
+/* 4. Активный пункт в Сайдбаре (фиолетовая обводка) */
+html.light button[class*="bg-purple-500/20"] {
+  background-color: #f3e8ff !important;
+  color: #7c3aed !important;
+  border: 1px solid #d8b4fe !important;
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+
+/* 5. Кнопки */
+html.light button[class*="bg-[#1f1f2e]"] {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(168, 85, 247, 0.3);
-  border-radius: 10px;
+html.light button[class*="bg-[#1f1f2e]"] svg {
+  color: #0f172a !important;
+  fill: none !important;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(168, 85, 247, 0.8);
+html.light button[class*="bg-purple-600"] {
+  background-color: #7c3aed !important;
+}
+html.light button[class*="bg-purple-600"] svg {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+/* 6. Чекбоксы */
+html.light input[type="checkbox"] {
+  accent-color: #7c3aed !important;
+}
+
+/* 7. БАННЕР: оставляем темный градиент, текст белый (благодаря keep-white) */
+html.light [class*="from-[#0a0a0f]"] {
+  background-image: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%) !important;
+}
+
+/* keep-white - принудительно белый текст для элементов на баннере */
+html.light .keep-white {
+  color: #ffffff !important;
+}
+
+/* 8. Плеер всегда темный */
+html.light .fixed.inset-0.bg-black.z-\[100\] {
+  background-color: #000000 !important;
 }

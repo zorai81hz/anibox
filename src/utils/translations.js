@@ -315,9 +315,9 @@ const rawDictionary = {
   "tian guan ci fu 2": "Благословение небожителей 2",
   "mo dao zu shi 2": "Магистр дьявольского культа 2",
   "mo dao zu shi 3": "Магистр дьявольского культа 3",
-  "scissor seven 2nd season": "Семь семян 2 сезон",
-  "scissor seven 3rd season": "Семь семян 3 сезон",
-  "scissor seven 4th season": "Семь семян 4 сезон",
+  "scissor seven 2nd season": "Семь клинков 2 сезон",
+  "scissor seven 3rd season": "Семь клинков 3 сезон",
+  "scissor seven 4th season": "Семь клинков 4 сезон",
   "the daily life of the immortal king 2": "Повседневная жизнь бессмертного короля 2",
   "the daily life of the immortal king 3": "Повседневная жизнь бессмертного короля 3",
   "spare me, great lord!": "Пощади меня, великий господин",
@@ -479,15 +479,15 @@ const rawDictionary = {
   "death note 2016": "Тетрадь смерти (2016)",
 
   // --- ОХОТНИК Х ОХОТНИК ---
-  "hunter x hunter": "Охотник х Охотник",
-  "hunterxhunter": "Охотник х Охотник",
-  "hunter x hunter 1999": "Охотник х Охотник (1999)",
-  "hunter x hunter 2011": "Охотник х Охотник (2011)",
-  "hunter x hunter ova": "Охотник х Охотник OVA",
-  "hunter x hunter greed island": "Охотник х Охотник: Остров Жадности",
-  "hunter x hunter greed island final": "Охотник х Охотник: Остров Жадности (Финал)",
-  "hunter x hunter movie phantom rouge": "Охотник х Охотник: Фантом Руж",
-  "hunter x hunter movie the last mission": "Охотник х Охотник: Последняя миссия",
+  "hunter x hunter": "Хантер х Хантер",
+  "hunterxhunter": "Хантер х Хантер",
+  "hunter x hunter 1999": "Хантер х Хантер (1999)",
+  "hunter x hunter 2011": "Хантер х Хантер (2011)",
+  "hunter x hunter ova": "Хантер х Хантер OVA",
+  "hunter x hunter greed island": "Хантер х Хантер: Остров Жадности",
+  "hunter x hunter greed island final": "Хантер х Хантер: Остров Жадности (Финал)",
+  "hunter x hunter movie phantom rouge": "Хантер х Хантер: Фантом Руж",
+  "hunter x hunter movie the last mission": "Хантер х Хантер: Последняя миссия",
 
   // --- ТОКИЙСКИЙ ГУЛЬ ---
   "tokyo ghoul": "Токийский гуль",
@@ -2714,9 +2714,9 @@ const rawDictionary = {
   "grandmaster of demonic cultivation q": "Магистр дьявольского культа Q",
   "grandmaster of demonic cultivation final season": "Магистр дьявольского культа: Финал",
   "scissor seven": "Семь семян",
-  "scissor seven season 2": "Семь семян 2",
-  "scissor seven season 3": "Семь семян 3",
-  "scissor seven season 4": "Семь семян 4",
+  "scissor seven season 2": "Семь клинков 2",
+  "scissor seven season 3": "Семь клинков 3",
+  "scissor seven season 4": "Семь клинков 4",
   "the daily life of the immortal king": "Повседневная жизнь бессмертного короля",
   "the daily life of the immortal king 2": "Повседневная жизнь бессмертного короля 2",
   "the daily life of the immortal king 3": "Повседневная жизнь бессмертного короля 3",
@@ -3277,7 +3277,7 @@ const rawDictionary = {
   "tian guan ci fu": "Благословение небожителей",
   "mo dao zu shi": "Магистр дьявольского культа",
   "grandmaster of demonic cultivation": "Магистр дьявольского культа",
-  "scissor seven": "Семь семян",
+  "scissor seven": "Семь клинков",
 
   // ==========================================
   // ЧАСТЬ 4: КЛАССИКА, КИНО, РОМАНТИКА И МЕХА
@@ -3560,9 +3560,9 @@ const rawDictionary = {
   "shinmai maou no testament departure": "Завет последнего демона: Отправление",
   "monster musume no iru nichijou": "Повседневная жизнь с девушкой-монстром",
   "monster musume": "Повседневная жизнь с девушкой-монстром",
-  "to love-ru": "Любовь и ненависть",
-  "to love-ru darkness": "Любовь и ненависть: Тьма",
-  "to love-ru darkness 2nd": "Любовь и ненависть: Тьма 2",
+  "to love-ru": "Любовные неприятности",
+  "to love-ru darkness": "Любовные неприятности: Тьма",
+  "to love-ru darkness 2nd": "Любовные неприятности: Тьма 2",
   "dakara boku wa, h ga dekinai": "Поэтому я не могу быть H",
   "so, i can't play h!": "Поэтому я не могу быть H",
   "kiss x sis": "Поцелуй x Сестра",
@@ -4230,6 +4230,19 @@ const rawDictionary = {
   "date a bullet": "Пуля в рандеву",
   "date a live: date to date": "Рандеву с жизнью: Свидание",
 
+    // --- НАРУТО (ФИЛЬМЫ) ---
+  "naruto the movie: ninja clash in the land of snow": "Наруто: Фильм 1 — Конфликт ниндзя в Стране Снегов",
+  "naruto the movie 2: legend of the stone of gelel": "Наруто: Фильм 2 — Легенда о камне Гелел",
+  "naruto the movie 3: guardians of the crescent moon kingdom": "Наруто: Фильм 3 — Стражи Королевства Полумесяца",
+  "naruto shippuden the movie": "Наруто: Ураганные хроники — Фильм",
+  "naruto shippuden the movie: bonds": "Наруто: Ураганные хроники 2 — Связи",
+  "naruto shippuden the movie: the will of fire": "Наруто: Ураганные хроники 3 — Воля огня",
+  "naruto shippuden the movie: the lost tower": "Наруто: Ураганные хроники 4 — Затерянная башня",
+  "naruto shippuden the movie: blood prison": "Наруто: Ураганные хроники 5 — Кровавая тюрьма",
+  "naruto shippuden the movie: road to ninja": "Наруто: Ураганные хроники 6 — Путь ниндзя",
+  "the last: naruto the movie": "Последний: Наруто",
+  "boruto: naruto the movie": "Боруто: Наруто",
+
   // --- HIGH SCHOOL DXD (Все сезоны и OVA) ---
   "high school dxd": "Школа дьявола",
   "high school dxd new": "Школа дьявола: Новый",
@@ -4244,7 +4257,7 @@ const rawDictionary = {
   "kuroko no basket movie 1: winter cup - kage to hikari": "Баскетбол Куроко: Зимний кубок - Тень и свет",
   "kuroko no basket movie 2: winter cup - namida no saki e": "Баскетбол Куроко: Зимний кубок - За слезами",
   "kuroko no basket movie 3: winter cup - tobira no mukou": "Баскетбол Куроко: Зимний кубок - За дверью",
-  "kuroko no basket: baka ja katenai no yo!": "Баскетбол Куроко: Я не могу проиграть!",
+  "kuroko no basket: baka ja katenai no yo!": "Баскетбол Куроко: Дуракам не выиграть",
   "kuroko no basket: mou ikkai yarimasen ka": "Баскетбол Куроко: Не сыграть ли нам еще раз?",
 
   "haikyuu!! movie 1: owari to hajimari": "Волейбол!! Фильм 1: Конец и начало",
@@ -4689,7 +4702,7 @@ const rawDictionary = {
   "suzume no tojimari": "Судзумэ, закрывающая двери",
   "suzume": "Судзумэ",
 
-  "scissor seven 2nd season": "Семь семян 2 сезон",
+  "scissor seven 2nd season": "Семь клинков 2 сезон",
   "the daily life of the immortal king": "Повседневная жизнь бессмертного короля",
   "spare me great lord": "Пощади меня, великий господин",
   "swallowed star": "Поглощая звезду",
@@ -4892,52 +4905,67 @@ export async function translateText(text) {
 }
 
 // --- ОЧЕРЕДЬ ДЛЯ НАЗВАНИЙ ---
+// --- УМНАЯ ОЧЕРЕДЬ ДЛЯ НАЗВАНИЙ (GIGACHAT BATCH) ---
 const queue = [];
 let isProcessing = false;
+const BATCH_SIZE = 10; // Отправляем по 10 штук за раз
 
 async function processQueue() {
   if (isProcessing || queue.length === 0) return;
   isProcessing = true;
 
-  const task = queue.shift();
+  // Берем пачку из очереди (до 10 штук)
+  const batch = queue.splice(0, BATCH_SIZE);
+  
   try {
-    let result = task.original; 
-    let found = false;
+    // Собираем только те названия, которых нет в кэше
+    const titlesToTranslate = batch.filter(task => {
+      const cache = JSON.parse(localStorage.getItem('anibox_title_cache') || '{}');
+      return !cache[task.original] || !/[а-яА-ЯЁё]/.test(cache[task.original]);
+    }).map(t => t.original);
 
-    if (window.api && task.titlesArray) {
-      const apiRes = await window.api.getRuTitle(task.titlesArray);
-      if (apiRes && /[а-яА-ЯЁё]/.test(apiRes)) {
-        result = apiRes;
-        found = true;
-      }
+    let gigaResult = null;
+    if (titlesToTranslate.length > 0 && window.api && window.api.translateTitlesGigaChat) {
+      // Отправляем пачку в GigaChat
+      gigaResult = await window.api.translateTitlesAI(titlesToTranslate);
     }
-    
-    if (!found) {
-       if (task.original.split(' ').length > 1 && !/[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf]/.test(task.original)) {
-           const translated = await translateText(task.original);
-           if (translated && !translated.toLowerCase().includes('кусочек')) {
-               result = translated;
-           }
-       }
-    }
-    
+
     const titleCache = JSON.parse(localStorage.getItem('anibox_title_cache') || '{}');
-    titleCache[task.original] = result;
-    localStorage.setItem('anibox_title_cache', JSON.stringify(titleCache));
-    
-    task.resolve(result);
+
+    for (const task of batch) {
+      let result = task.original;
+
+      // 1. Проверяем GigaChat (если он вернул перевод)
+      if (gigaResult && gigaResult[task.original]) {
+        result = gigaResult[task.original];
+      } 
+      // 2. Если GigaChat затупил, пробуем Google
+      else {
+        const translated = await translateText(task.original);
+        if (translated && !translated.toLowerCase().includes('кусочек')) {
+          result = translated;
+        }
+      }
+
+      // Сохраняем в кэш и отдаем в React
+      titleCache[task.original] = result;
+      localStorage.setItem('anibox_title_cache', JSON.stringify(titleCache));
+      task.resolve(result);
+    }
+
   } catch (err) {
-    task.resolve(task.original);
+    // Если вообще всё упало, отдаем оригиналы
+    batch.forEach(task => task.resolve(task.original));
   }
 
-  await new Promise(r => setTimeout(r, 500));
   isProcessing = false;
-  processQueue();
+  processQueue(); // Запускаем следующую пачку
 }
 
 export function translateTitle(title, titlesArray) {
   if (!title) return Promise.resolve('');
   
+  // 1. Сначала ищем в твоем огромном словаре
   for (const t of titlesArray) {
     if (!t) continue;
     const cleaned = cleanString(t);
@@ -4946,26 +4974,35 @@ export function translateTitle(title, titlesArray) {
     }
   }
 
+  // 2. Если в словаре нет, проверяем кэш
   const titleCache = JSON.parse(localStorage.getItem('anibox_title_cache') || '{}');
   if (titleCache[title] && /[а-яА-ЯЁё]/.test(titleCache[title])) {
     return Promise.resolve(titleCache[title]);
   }
 
+  // 3. Если нигде нет, ставим в очередь
   return new Promise((resolve) => {
-    queue.push({ original: title, titlesArray, resolve });
-    processQueue();
+    // Проверяем, нет ли уже такой задачи в очереди
+    const existing = queue.find(q => q.original === title);
+    if (existing) {
+      const originalResolve = existing.resolve;
+      existing.resolve = (res) => { originalResolve(res); resolve(res); };
+    } else {
+      queue.push({ original: title, titlesArray, resolve });
+      processQueue();
+    }
   });
 }
-// --- УМНЫЙ ПОИСК (Перевод запроса с русского на английский для API) ---
+
+// --- УМНЫЙ ПОИСК (Оставляем как было) ---
 export function getSearchQuery(input) {
   if (!input) return '';
   const cleanInput = cleanString(input);
   
-  // Если запрос на русском
   if (/[а-яА-ЯЁё]/.test(cleanInput)) {
     for (const [eng, ru] of Object.entries(rawDictionary)) {
       if (cleanString(ru).includes(cleanInput)) {
-        return eng; // Возвращаем английское название для поиска
+        return eng; 
       }
     }
   }
