@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
 import AchievementToast from './AchievementToast';
 
-// Функция переводит "00:17:40,000" в секунды (1060)
 function timeToSeconds(timeStr) {
   if (!timeStr) return 0;
   const parts = timeStr.split(':');
@@ -15,7 +14,7 @@ function timeToSeconds(timeStr) {
   return h * 3600 + m * 60 + s;
 }
 
-export default function Player({ anime, episode, onClose, onNextEpisode, initialTime = 0, library }) {
+export default function Player({ anime, episode, onClose, onNextEpisode, initialTime = 0, library, achievements }) {
   const [videoSrc, setVideoSrc] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
@@ -29,7 +28,6 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
   const [error, setError] = useState(null);
   const [isTestVideo, setIsTestVideo] = useState(false);
   
-  // Состояния для достижений
   const [newAchievement, setNewAchievement] = useState(null);
   const [animeAchievements, setAnimeAchievements] = useState([]);
   const unlockedAchievementsRef = useRef(new Set());
@@ -39,16 +37,16 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
   const initialTimeRef = useRef(initialTime);
   const libraryRef = useRef(library);
 
-  // Синхронизируем initialTime и library через ref, чтобы они не перезапускали HLS
   useEffect(() => { initialTimeRef.current = initialTime; }, [initialTime]);
   useEffect(() => { libraryRef.current = library; }, [library]);
 
-  // ================ useEffect #1: ЗАГРУЗКА АЧИВОК ================
+  // Загрузка ачивок
   useEffect(() => {
     if (window.api && window.api.getAchievements && anime?.id) {
       window.api.getAchievements(anime.id).then(data => {
+        console.log("Загруженные ачивки для ID", anime.id, ":", data);
         setAnimeAchievements(data || []);
-        unlockedAchievementsRef.current.clear(); // Сбрасываем разблокированные при смене аниме
+        unlockedAchievementsRef.current.clear();
       });
     }
   }, [anime?.id]);
@@ -61,7 +59,7 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
     }));
   }, [animeAchievements]);
 
-  // ================ useEffect #2: ПРОВЕРКА ДОСТИЖЕНИЙ ================
+  // Проверка достижений (Используем хук achievements)
   useEffect(() => {
     if (relevantAchievements.length === 0) return;
 
@@ -73,6 +71,10 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
             if (!unlockedAchievementsRef.current.has(ach.title)) {
               setNewAchievement(ach);
               unlockedAchievementsRef.current.add(ach.title);
+              // СОХРАНЯЕМ В НАШ НОВЫЙ ХУК!
+              if (achievements && achievements.unlockAchievement) {
+                achievements.unlockAchievement(ach.title, ach.title, ach.desc, ach.image);
+              }
             }
           }
         });
@@ -80,9 +82,9 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
     }, 1000);
     
     return () => clearInterval(check);
-  }, [relevantAchievements, isPlaying]);
+  }, [relevantAchievements, isPlaying, achievements]);
 
-  // ================ useEffect #3: ЗАГРУЗКА ВИДЕО ================
+  // Загрузка видео
   useEffect(() => {
     let isMounted = true;
     setIsLoadingVideo(true);
@@ -97,15 +99,14 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
           if (link && isMounted) {
             setVideoSrc(link);
             setIsTestVideo(false);
+            setIsLoadingVideo(false)
           } else {
-            // Если ссылки нет, показываем ошибку, а не тестовое видео
             if (isMounted) {
               setError("Видео не найдено. Возможно, этой серии нет на AniLibria.");
               setIsLoadingVideo(false);
             }
           }
         } else {
-           // Если API вообще нет
            if (isMounted) {
              setError("Ошибка подключения к AniLibria.");
              setIsLoadingVideo(false);
@@ -114,11 +115,8 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
       } catch (err) {
         if (isMounted) {
           setError("Ошибка при загрузке видео");
-          setVideoSrc("https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
-          setIsTestVideo(true);
+          setIsLoadingVideo(false);
         }
-      } finally {
-        if (isMounted) setIsLoadingVideo(false);
       }
     };
 
@@ -126,13 +124,13 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
     return () => { isMounted = false; };
   }, [anime, episode]);
 
-  // ================ useEffect #4: HLS ПЛЕЕР ================
+  // HLS
   useEffect(() => {
     if (!videoSrc || !videoRef.current) return;
     let hls;
 
     if (Hls.isSupported()) {
-      hls = new Hls({ startLevel: -1 }); // Автоматическое качество
+      hls = new Hls({ startLevel: -1 });
       hls.loadSource(videoSrc);
       hls.attachMedia(videoRef.current);
       
@@ -146,16 +144,9 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
       hls.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) {
           switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              hls.recoverMediaError();
-              break;
-            default:
-              setError("Не удалось загрузить видеопоток");
-              hls.destroy();
-              break;
+            case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
+            case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
+            default: setError("Не удалось загрузить видеопоток"); hls.destroy(); break;
           }
         }
       });
@@ -171,9 +162,9 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
 
     return () => { if (hls) hls.destroy(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoSrc]); // Зависит ТОЛЬКО от ссылки, чтобы не моргало
+  }, [videoSrc]);
 
-  // ================ useEffect #5: СОХРАНЕНИЕ ТАЙМКОДА ================
+  // Сохранение таймкода
   useEffect(() => {
     const interval = setInterval(() => {
       if (videoRef.current && isPlaying && !isTestVideo && videoRef.current.currentTime > 0) {
@@ -183,16 +174,7 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
     return () => clearInterval(interval);
   }, [isPlaying, episode, anime.id, isTestVideo]);
 
-  // ================ useEffect #6: ИСТОРИЯ ПРОСМОТРОВ ================
-  useEffect(() => {
-    if (!isTestVideo && libraryRef.current.addHistory && anime) {
-      libraryRef.current.addHistory(anime, episode);
-    }
-  }, [anime, episode, isTestVideo]);
-
-  // ================ ОБРАБОТЧИКИ ================
   const handleMouseMove = () => {
-    // Показываем контролы при движении мыши
     const controls = document.getElementById('video-controls');
     if (controls) {
       controls.style.opacity = '1';
@@ -205,11 +187,8 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
 
   const togglePlay = () => {
     if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
+      if (isPlaying) videoRef.current.pause();
+      else videoRef.current.play();
       setIsPlaying(!isPlaying);
     }
   };
@@ -248,9 +227,7 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
 
   const changeSpeed = (newSpeed) => {
     setSpeed(newSpeed);
-    if (videoRef.current) {
-      videoRef.current.playbackRate = newSpeed;
-    }
+    if (videoRef.current) videoRef.current.playbackRate = newSpeed;
     setShowSettings(false);
   };
 
@@ -272,20 +249,16 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
 
   return (
     <div id="player-container" className="fixed inset-0 bg-black z-50 flex flex-col" onMouseMove={handleMouseMove}>
-      {/* Верхняя панель */}
       <div id="video-controls" className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-black/90 to-transparent z-20 transition-opacity duration-300">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-white">{anime.title.romaji}</h2>
+            <h2 className="text-xl font-bold text-white keep-white">{anime.title.romaji}</h2>
             <p className="text-sm text-slate-400">Серия {episode} {isTestVideo && <span className="text-yellow-400 ml-2">(Тестовое видео)</span>}</p>
           </div>
-          <button onClick={onClose} className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition">
-            <X size={24} />
-          </button>
+          <button onClick={onClose} className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition"><X size={24} /></button>
         </div>
       </div>
 
-      {/* Видео */}
       <div className="flex-1 relative flex items-center justify-center bg-black">
         {isLoadingVideo ? (
           <div className="flex flex-col items-center gap-4">
@@ -310,7 +283,6 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
           />
         )}
 
-        {/* Центральная кнопка Play (видна когда на паузе) */}
         {!isPlaying && !isLoadingVideo && !error && (
           <button onClick={togglePlay} className="absolute inset-0 m-auto w-20 h-20 bg-purple-600/80 hover:bg-purple-500 rounded-full flex items-center justify-center text-white backdrop-blur-sm transition transform hover:scale-110 shadow-[0_0_30px_rgba(168,85,247,0.5)]">
             <Play size={40} className="ml-2" fill="currentColor" />
@@ -318,31 +290,20 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
         )}
       </div>
 
-      {/* Нижняя панель управления */}
       <div id="video-controls-bottom" className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 to-transparent z-20 transition-opacity duration-300">
-        
-        {/* Прогресс бар */}
         <div className="flex items-center gap-4 mb-4 text-xs font-mono text-slate-300">
           <span>{formatTime(progress)}</span>
-          <input
-            type="range"
-            min="0"
-            max={duration || 100}
-            value={progress}
-            onChange={handleSeek}
-            className="flex-1 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-purple-500"
-          />
+          <input type="range" min="0" max={duration || 100} value={progress} onChange={handleSeek} className="flex-1 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-purple-500" />
           <span>{formatTime(duration)}</span>
         </div>
 
-        {/* Кнопки управления */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <button onClick={togglePlay} className="text-white hover:text-purple-400 transition">
               {isPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
             </button>
             
-            <button onClick={() => onNextEpisode && onNextEpisode()} className="text-white hover:text-purple-400 transition" title="Следующая серия">
+            <button onClick={() => onNextEpisode && onNextEpisode(episode + 1)} className="text-white hover:text-purple-400 transition" title="Следующая серия">
               <SkipForward size={24} fill="currentColor" />
             </button>
 
@@ -350,15 +311,7 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
               <button onClick={toggleMute} className="text-white hover:text-purple-400 transition">
                 {isMuted || volume === 0 ? <VolumeX size={24} /> : <Volume2 size={24} />}
               </button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={isMuted ? 0 : volume}
-                onChange={handleVolumeChange}
-                className="w-24 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-purple-500 opacity-0 group-hover:opacity-100 transition-opacity"
-              />
+              <input type="range" min="0" max="1" step="0.05" value={isMuted ? 0 : volume} onChange={handleVolumeChange} className="w-24 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
 
@@ -370,23 +323,14 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
               <Maximize size={24} />
             </button>
 
-            {/* Меню настроек */}
             <AnimatePresence>
               {showSettings && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="absolute bottom-12 right-10 w-64 bg-[#15151f] border border-[#2a2a3a] rounded-xl overflow-hidden shadow-2xl z-50"
-                >
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-12 right-10 w-64 bg-[#15151f] border border-[#2a2a3a] rounded-xl overflow-hidden shadow-2xl z-50">
                   {settingsTab === 'main' ? (
                     <div className="p-2">
                       <button onClick={() => setSettingsTab('speed')} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 rounded-lg text-sm text-white transition">
                         <span className="flex items-center gap-3"><ChevronRight size={16} /> Скорость</span>
                         <span className="text-slate-400">{speed}x</span>
-                      </button>
-                      <button onClick={() => changeSpeed(1)} className="w-full text-left px-4 py-3 hover:bg-white/5 rounded-lg text-sm text-slate-400 transition">
-                        Сбросить всё
                       </button>
                     </div>
                   ) : (
@@ -408,11 +352,7 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
         </div>
       </div>
 
-      {/* Тост с достижением */}
-      <AchievementToast 
-        achievement={newAchievement} 
-        onClose={() => setNewAchievement(null)} 
-      />
+      <AchievementToast achievement={newAchievement} onClose={() => setNewAchievement(null)} />
     </div>
   );
 }

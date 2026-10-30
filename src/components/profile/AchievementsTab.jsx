@@ -1,72 +1,43 @@
-import { Clock, Play, Flame, CheckCircle2, Library } from 'lucide-react';
+// src/components/profile/AchievementsTab.jsx
+import { Trophy } from 'lucide-react';
 
-export default function StatsTab({ library }) {
-  const items = Object.values(library.items);
-  
-  // Считаем статистику
-  const totalAnime = items.length;
-  const totalEpisodes = items.reduce((acc, item) => acc + (item.progress || 0), 0);
-  const watching = items.filter(i => i.status === 'watching').length;
-  const completed = items.filter(i => i.status === 'completed').length;
+export default function AchievementsTab({ unlocked = {} }) {
+  const achievementsArray = Object.values(unlocked).sort((a, b) => b.unlockedAt - a.unlockedAt);
+
+  if (achievementsArray.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-slate-500 bg-[#15151f] light:bg-white border border-[#1f1f2e] light:border-slate-200 rounded-2xl">
+        <Trophy size={64} className="mb-4 opacity-50 text-purple-500" />
+        <h3 className="text-xl font-bold text-white light:text-slate-900 mb-2">Пока нет достижений</h3>
+        <p className="text-sm">Смотрите аниме и достигайте таймкодов, чтобы открыть свои первые ачивки!</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      
-      {/* Время просмотра */}
-      <div className="bg-[#15151f] light:bg-white border border-[#1f1f2e] light:border-[#e2e8f0] rounded-xl p-6 flex items-center gap-4 light:shadow-md">
-        <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0">
-          <Clock className="text-purple-500" size={24} />
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {achievementsArray.map(ach => (
+        <div key={ach.id} className="bg-[#15151f] light:bg-white border border-[#1f1f2e] light:border-slate-200 p-4 rounded-xl flex gap-4 items-center shadow-lg">
+          <div className="w-16 h-16 rounded-lg bg-black/50 overflow-hidden shrink-0 border border-purple-500/30">
+            {ach.image ? (
+              <img src={ach.image} alt={ach.title} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-yellow-500">
+                <Trophy size={32} />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-bold text-white light:text-slate-900 truncate">{ach.title}</h4>
+            <p className="text-xs text-slate-400 mt-1 line-clamp-2">{ach.desc}</p>
+<p className="text-[10px] text-purple-400 mt-2 font-mono">
+  {ach.unlockedAt && !isNaN(new Date(ach.unlockedAt).getTime()) 
+    ? `Получено: ${new Date(ach.unlockedAt).toLocaleDateString('ru-RU')}` 
+    : 'Получено ранее'}
+</p>
+          </div>
         </div>
-        <div>
-          <p className="text-slate-400 text-sm">Всего времени</p>
-          <p className="text-2xl font-bold text-white light:text-slate-900">{Math.round(totalEpisodes * 24 / 60)} ч.</p>
-        </div>
-      </div>
-
-      {/* Просмотрено серий */}
-      <div className="bg-[#15151f] light:bg-white border border-[#1f1f2e] light:border-[#e2e8f0] rounded-xl p-6 flex items-center gap-4 light:shadow-md">
-        <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-          <Play className="text-blue-500" size={24} />
-        </div>
-        <div>
-          <p className="text-slate-400 text-sm">Просмотрено серий</p>
-          <p className="text-2xl font-bold text-white light:text-slate-900">{totalEpisodes}</p>
-        </div>
-      </div>
-
-      {/* Смотрю */}
-      <div className="bg-[#15151f] light:bg-white border border-[#1f1f2e] light:border-[#e2e8f0] rounded-xl p-6 flex items-center gap-4 light:shadow-md">
-        <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center shrink-0">
-          <Flame className="text-orange-500" size={24} />
-        </div>
-        <div>
-          <p className="text-slate-400 text-sm">Смотрю</p>
-          <p className="text-2xl font-bold text-white light:text-slate-900">{watching}</p>
-        </div>
-      </div>
-
-      {/* Завершено */}
-      <div className="bg-[#15151f] light:bg-white border border-[#1f1f2e] light:border-[#e2e8f0] rounded-xl p-6 flex items-center gap-4 light:shadow-md">
-        <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0">
-          <CheckCircle2 className="text-green-500" size={24} />
-        </div>
-        <div>
-          <p className="text-slate-400 text-sm">Завершено</p>
-          <p className="text-2xl font-bold text-white light:text-slate-900">{completed}</p>
-        </div>
-      </div>
-
-      {/* В библиотеке */}
-      <div className="bg-[#15151f] light:bg-white border border-[#1f1f2e] light:border-[#e2e8f0] rounded-xl p-6 flex items-center gap-4 md:col-span-2 light:shadow-md">
-        <div className="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center shrink-0">
-          <Library className="text-yellow-500" size={24} />
-        </div>
-        <div>
-          <p className="text-slate-400 text-sm">В библиотеке</p>
-          <p className="text-2xl font-bold text-white light:text-slate-900">{totalAnime}</p>
-        </div>
-      </div>
-
+      ))}
     </div>
   );
 }

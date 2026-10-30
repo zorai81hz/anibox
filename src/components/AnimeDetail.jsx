@@ -9,55 +9,7 @@ const STATUSES = [
   { id: 'completed', label: 'Просмотрено' }, { id: 'dropped', label: 'Брошено' },
 ];
 
-// ==========================================
-// УНИВЕРСАЛЬНЫЙ АЛГОРИТМ ПОСТРОЕНИЯ ПОРЯДКА ПРОСМОТРА
-// ==========================================
-const buildWatchOrder = (startAnime) => {
-  if (!startAnime) return [];
-
-  const allParts = new Map();
-  allParts.set(startAnime.id, startAnime);
-
-  // Собираем все прямые связи
-  if (startAnime.relations && startAnime.relations.edges) {
-    startAnime.relations.edges.forEach(edge => {
-      if (edge.node && edge.node.type === 'ANIME') {
-        if (!allParts.has(edge.node.id)) {
-          allParts.set(edge.node.id, edge.node);
-        }
-      }
-    });
-  }
-
-  const partsArray = Array.from(allParts.values());
-
-  // Сортируем: сначала TV-сериалы по годам, потом OVA, потом фильмы, потом спешлы
-  return partsArray.sort((a, b) => {
-    const formatWeight = {
-      'TV': 1, 
-      'TV_SHORT': 2, 
-      'ONA': 3, 
-      'OVA': 4, 
-      'MOVIE': 5, 
-      'SPECIAL': 6,
-      'MUSIC': 7
-    };
-    
-    const weightA = formatWeight[a.format] || 8;
-    const weightB = formatWeight[b.format] || 8;
-
-    if (weightA !== weightB) return weightA - weightB;
-
-    const yearA = a.seasonYear || 9999;
-    const yearB = b.seasonYear || 9999;
-    if (yearA !== yearB) return yearA - yearB;
-
-    return (a.title.romaji || '').localeCompare(b.title.romaji || '');
-  });
-};
-// ==========================================
-
-export default function AnimeDetail({ id, onClose, library, onOpen }) {
+export default function AnimeDetail({ id, onClose, library, onOpen, achievements }) {
   const [anime, setAnime] = useState(null);
   const [loading, setLoading] = useState(true);
   const [playingEpisode, setPlayingEpisode] = useState(null);
@@ -65,13 +17,15 @@ export default function AnimeDetail({ id, onClose, library, onOpen }) {
   const [ruTitle, setRuTitle] = useState('');
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [dubs, setDubs] = useState([]);
-  
   const [showAgeWarning, setShowAgeWarning] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    getAnimeDetails(id)
+    const libItem = library.items[id];
+    const fallbackTitle = libItem ? (libItem.title.romaji || libItem.title.native) : null;
+
+    getAnimeDetails(id, fallbackTitle)
       .then(data => {
         if (!data) {
           setLoading(false);
@@ -83,7 +37,6 @@ export default function AnimeDetail({ id, onClose, library, onOpen }) {
         const isAdult = data.genres?.includes('Ecchi') || data.genres?.includes('Hentai');
         if (isAdult && !ageConfirmed) setShowAgeWarning(true);
 
-        // Очищаем описание от HTML и BBCode перед отправкой на перевод
         if (data.description) {
           const cleanDesc = data.description
             .replace(/<[^>]*>/g, '')
@@ -122,10 +75,9 @@ export default function AnimeDetail({ id, onClose, library, onOpen }) {
     <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-6 text-center">
       <AlertTriangle size={64} className="text-red-500 mb-6" />
       <h2 className="text-2xl font-bold text-white mb-2">Не удалось загрузить аниме</h2>
-      <p className="text-slate-400 max-w-md mb-8">API Shikimori не отвечает или аниме не найдено. Проверьте консоль (F12) для деталей.</p>
+      <p className="text-slate-400 max-w-md mb-8">API Shikimori не отвечает или аниме не найдено.</p>
       <div className="flex gap-4">
         <button onClick={onClose} className="px-6 py-3 bg-[#1f1f2e] hover:bg-[#2a2a3e] rounded-xl font-bold text-white transition">Закрыть</button>
-        <button onClick={() => window.location.reload()} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold text-white transition">Обновить</button>
       </div>
     </div>
   );
@@ -148,24 +100,14 @@ export default function AnimeDetail({ id, onClose, library, onOpen }) {
   const inLib = library.items[anime.id];
   const isFav = inLib?.isFavorite;
 
-  // Умный подсчет серий
   let totalEpisodes = anime.episodes || anime.episodesAired;
   if (!totalEpisodes) {
-    if (anime.format === 'MOVIE') {
-      totalEpisodes = 1;
-    } else {
-      totalEpisodes = 24; // Дефолт, если вообще нет данных
-    }
+    totalEpisodes = anime.format === 'MOVIE' ? 1 : 24;
   }
 
   const episodesArray = Array.from({ length: totalEpisodes }, (_, i) => i + 1);
-  
-  // Дата следующей серии из Shikimori
   const nextEpDate = anime.nextEpisodeAt ? new Date(anime.nextEpisodeAt).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : null;
   
-  // Применяем наш универсальный алгоритм
-  const franchise = buildWatchOrder(anime);
-
   const handleFavoriteClick = () => {
     if (!inLib) {
       library.add({ ...anime, episodes: totalEpisodes, title: { ...anime.title, ru: title } }, 'favorite');
@@ -180,16 +122,12 @@ export default function AnimeDetail({ id, onClose, library, onOpen }) {
       <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 overflow-y-auto custom-scrollbar" onClick={onClose}>
         <div className="max-w-6xl mx-auto my-8 bg-[#0a0a0f] light:bg-slate-50 rounded-2xl overflow-hidden border border-[#1f1f2e] light:border-slate-200 shadow-2xl" onClick={e => e.stopPropagation()}>
           
-          {/* БАННЕР */}
           <div className="relative h-[300px] overflow-hidden bg-transparent">
             {anime.bannerImage ? <img src={anime.bannerImage} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gradient-to-br from-purple-900 to-pink-900" />}
-            
             <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/40 to-transparent light:from-black/90 light:via-black/40"></div>
-            
             <button onClick={onClose} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 hover:bg-red-500 flex items-center justify-center transition z-10 text-white"><X size={20} /></button>
           </div>
 
-          {/* ИНФОРМАЦИЯ */}
           <div className="px-8 pb-8 relative z-10 -mt-32">
             <div className="flex gap-6 flex-col md:flex-row">
               <img src={anime.coverImage.extraLarge} className="w-48 rounded-xl shadow-2xl shrink-0 border-4 border-white/10 relative z-20" />
@@ -215,7 +153,6 @@ export default function AnimeDetail({ id, onClose, library, onOpen }) {
                   </div>
                 )}
 
-                {/* Плашка с датой или заглушкой для онгоингов */}
                 {anime.status === 'RELEASING' && (
                   <div className="mt-4 inline-flex items-center gap-2 bg-purple-900/60 light:bg-purple-100 border border-purple-500/30 light:border-purple-300 px-3 py-1.5 rounded-lg text-xs text-purple-200 light:text-purple-800 backdrop-blur-sm">
                     <Clock size={14} /> 
@@ -239,10 +176,6 @@ export default function AnimeDetail({ id, onClose, library, onOpen }) {
                     <Play size={18} fill="currentColor" /> {inLib?.progress > 0 ? `Продолжить (Серия ${inLib.progress + 1})` : 'Смотреть'}
                   </button>
                   
-                  <button className="flex items-center gap-2 px-5 py-2.5 bg-black/60 hover:bg-black/80 rounded-lg font-semibold text-sm transition text-white keep-white backdrop-blur-sm border border-white/10">
-                    <Info size={18} /> Подробнее
-                  </button>
-
                   <button onClick={handleFavoriteClick} className={`flex items-center justify-center px-4 py-2.5 rounded-lg font-semibold text-sm transition border backdrop-blur-sm keep-white ${ isFav ? 'bg-red-500/40 text-white border-red-500/50 hover:bg-red-500/60' : 'bg-black/60 text-white border-white/10 hover:bg-black/80' }`} title={isFav ? "Убрать из избранного" : "В избранное"}>
                     <Heart size={18} fill={isFav ? "currentColor" : "none"} />
                   </button>
@@ -284,33 +217,21 @@ export default function AnimeDetail({ id, onClose, library, onOpen }) {
               <h3 className="text-lg font-bold mb-2 text-purple-300 light:text-purple-600">Описание</h3>
               <p className="text-slate-300 light:text-slate-700 leading-relaxed text-sm whitespace-pre-line">{ruDescription || 'Перевод описания...'}</p>
             </div>
-
-            {franchise.length > 1 && (
-              <div className="mt-8">
-                <h3 className="text-lg font-bold mb-3 text-white light:text-slate-900">Порядок просмотра</h3>
-                <div className="space-y-2">
-                  {franchise.map((part, idx) => {
-                    const isCurrent = part.id === anime.id;
-                    return (
-                      <div key={part.id} onClick={() => !isCurrent && onOpen(part.id)} className={`flex items-center gap-4 p-3 rounded-lg transition ${isCurrent ? 'bg-purple-500/20 light:bg-purple-100 border border-purple-500/50 light:border-purple-300' : 'bg-[#15151f] light:bg-white border border-[#1f1f2e] light:border-slate-200 hover:border-purple-500/30 cursor-pointer'}`}>
-                        <span className="text-slate-500 font-mono text-sm w-6">{idx + 1}.</span>
-                        {part.coverImage && <img src={part.coverImage.large || part.coverImage.extraLarge} className="w-12 h-16 object-cover rounded" />}
-                        <div className="flex-1 min-w-0">
-                          <p className={`font-medium truncate text-sm ${isCurrent ? 'text-purple-300 light:text-purple-700' : 'text-white light:text-slate-900'}`}>{part.title.romaji || part.title.english} {isCurrent && <span className="ml-2 text-[10px]">(текущее)</span>}</p>
-                          <p className="text-xs text-slate-500 light:text-slate-500">{part.seasonYear || '—'} • {translateFormat(part.format)} {part.episodes && `• ${part.episodes} эп.`}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
 
+      {/* Передаем achievements в Player */}
       {playingEpisode && (
-        <Player anime={anime} episode={playingEpisode} initialTime={inLib?.timestamps?.[playingEpisode] || 0} library={library} onClose={() => setPlayingEpisode(null)} onNextEpisode={(ep) => { if (ep <= totalEpisodes) { setPlayingEpisode(ep); if (inLib) library.setProgress(anime.id, ep); } else { setPlayingEpisode(null); } }} />
+        <Player 
+          anime={anime} 
+          episode={playingEpisode} 
+          initialTime={inLib?.timestamps?.[playingEpisode] || 0} 
+          library={library} 
+          achievements={achievements}
+          onClose={() => setPlayingEpisode(null)} 
+          onNextEpisode={(ep) => { if (ep <= totalEpisodes) { setPlayingEpisode(ep); if (inLib) library.setProgress(anime.id, ep); } else { setPlayingEpisode(null); } }} 
+        />
       )}
     </>
   );

@@ -9,7 +9,7 @@ export default function Sidebar({ view, setView, library }) {
     { id: 'catalog', label: 'Каталог', icon: Search },
     { id: 'random', label: 'Рандом', icon: Shuffle },
     { id: 'schedule', label: 'Расписание', icon: Calendar },
-    { id: 'top', label: 'Лидерборд', icon: Trophy },
+    { id: 'top', label: 'Топ 100', icon: Trophy },
     { id: 'library', label: 'Мой список', icon: ListVideo, badge: total },
   ];
 

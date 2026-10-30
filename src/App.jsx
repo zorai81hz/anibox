@@ -15,26 +15,28 @@ import AnimeDetail from './components/AnimeDetail';
 import SplashScreen from './components/SplashScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useLibrary } from './hooks/useLibrary';
+import { useAchievements } from './hooks/useAchievements';
 
 export default function App() {
   const [view, setView] = useState('home');
   const [selectedId, setSelectedId] = useState(null);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  
   const library = useLibrary();
+  // Подключаем наш новый хук достижений
+  const achievements = useAchievements();
 
   // Применяем сохраненную тему и перекрашиваем рамку Windows при запуске
   useEffect(() => {
     const savedTheme = localStorage.getItem('anibox_theme') || 'dark';
     
-    // 1. Включаем CSS для светлой темы
     if (savedTheme === 'light') {
       document.documentElement.classList.add('light');
     } else {
       document.documentElement.classList.remove('light');
     }
 
-    // 2. Принудительно перекрашиваем рамку Windows
     if (window.api && window.api.setTheme) {
       window.api.setTheme(savedTheme);
     }
@@ -50,13 +52,9 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-[#0a0a0f] text-slate-100 font-sans">
-      {/* Боковое меню */}
       <Sidebar view={view} setView={setView} library={library} />
 
-      {/* Правая часть (Шапка + Контент) */}
       <div className="flex-1 ml-60 flex flex-col h-screen overflow-hidden">
-        
-        {/* Шапка */}
         <Header 
           setView={setView} 
           onSearch={(q) => { 
@@ -65,7 +63,6 @@ export default function App() {
           }} 
         />
 
-        {/* Основной контент */}
         <main className="flex-1 overflow-y-auto custom-scrollbar">
           <AnimatePresence mode="wait">
             <motion.div 
@@ -83,7 +80,8 @@ export default function App() {
                 {view === 'catalog' && <CatalogPage onOpen={setSelectedId} library={library} />}
                 {view === 'schedule' && <SchedulePage onOpen={setSelectedId} library={library} />}
                 {view === 'top' && <TopPage onOpen={setSelectedId} library={library} />}
-                {view === 'profile' && <ProfilePage library={library} onOpen={setSelectedId} />}
+                {/* Прокидываем achievements в профиль */}
+                {view === 'profile' && <ProfilePage library={library} onOpen={setSelectedId} achievements={achievements} />}
                 {view === 'settings' && <SettingsPage />}
                 {view === 'random' && <RandomPage onOpen={setSelectedId} library={library} />}
               </ErrorBoundary>
@@ -92,7 +90,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Модальное окно аниме */}
+      {/* Прокидываем achievements в карточку аниме */}
       {selectedId && (
         <ErrorBoundary>
           <AnimeDetail 
@@ -100,6 +98,7 @@ export default function App() {
             onClose={() => setSelectedId(null)} 
             library={library} 
             onOpen={setSelectedId} 
+            achievements={achievements}
           />
         </ErrorBoundary>
       )}
