@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAnimeDetails } from '../api/shikimori';
-import { X, Play, Plus, Star, Calendar, Tv, MonitorPlay, Loader2, Clock, AlertTriangle, Check, ChevronDown, Trash2, Heart, Mic2, Info } from 'lucide-react';
+import { X, Play, Plus, Star, Calendar, Tv, MonitorPlay, Loader2, Clock, AlertTriangle, Check, ChevronDown, Trash2, Heart, Mic2 } from 'lucide-react';
 import Player from './Player';
 import { translateFormat, translateStatus, translateText } from '../utils/translations';
 
@@ -27,10 +27,7 @@ export default function AnimeDetail({ id, onClose, library, onOpen, achievements
 
     getAnimeDetails(id, fallbackTitle)
       .then(data => {
-        if (!data) {
-          setLoading(false);
-          return;
-        }
+        if (!data) { setLoading(false); return; }
         setAnime(data); 
         setLoading(false); 
         
@@ -38,10 +35,7 @@ export default function AnimeDetail({ id, onClose, library, onOpen, achievements
         if (isAdult && !ageConfirmed) setShowAgeWarning(true);
 
         if (data.description) {
-          const cleanDesc = data.description
-            .replace(/<[^>]*>/g, '')
-            .replace(/\[\/?.*?\]/g, '')
-            .replace(/\n/g, ' ');
+          const cleanDesc = data.description.replace(/<[^>]*>/g, '').replace(/\[\/?.*?\]/g, '').replace(/\n/g, ' ');
           translateText(cleanDesc).then(setRuDescription);
         }
         
@@ -76,9 +70,7 @@ export default function AnimeDetail({ id, onClose, library, onOpen, achievements
       <AlertTriangle size={64} className="text-red-500 mb-6" />
       <h2 className="text-2xl font-bold text-white mb-2">Не удалось загрузить аниме</h2>
       <p className="text-slate-400 max-w-md mb-8">API Shikimori не отвечает или аниме не найдено.</p>
-      <div className="flex gap-4">
-        <button onClick={onClose} className="px-6 py-3 bg-[#1f1f2e] hover:bg-[#2a2a3e] rounded-xl font-bold text-white transition">Закрыть</button>
-      </div>
+      <button onClick={onClose} className="px-6 py-3 bg-[#1f1f2e] hover:bg-[#2a2a3e] rounded-xl font-bold text-white transition">Закрыть</button>
     </div>
   );
 
@@ -221,11 +213,11 @@ export default function AnimeDetail({ id, onClose, library, onOpen, achievements
         </div>
       </div>
 
-      {/* Передаем achievements в Player */}
       {playingEpisode && (
         <Player 
           anime={anime} 
           episode={playingEpisode} 
+          totalEpisodes={totalEpisodes} // <--- Здесь мы передаем общее количество
           initialTime={inLib?.timestamps?.[playingEpisode] || 0} 
           library={library} 
           achievements={achievements}

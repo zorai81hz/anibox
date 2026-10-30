@@ -14,7 +14,7 @@ function timeToSeconds(timeStr) {
   return h * 3600 + m * 60 + s;
 }
 
-export default function Player({ anime, episode, onClose, onNextEpisode, initialTime = 0, library, achievements }) {
+export default function Player({ anime, episode, totalEpisodes, onClose, onNextEpisode, initialTime = 0, library, achievements }) {
   const [videoSrc, setVideoSrc] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
@@ -44,7 +44,6 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
   useEffect(() => {
     if (window.api && window.api.getAchievements && anime?.id) {
       window.api.getAchievements(anime.id).then(data => {
-        console.log("Загруженные ачивки для ID", anime.id, ":", data);
         setAnimeAchievements(data || []);
         unlockedAchievementsRef.current.clear();
       });
@@ -53,16 +52,12 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
 
   const relevantAchievements = useMemo(() => {
     if (!animeAchievements || animeAchievements.length === 0) return [];
-    return animeAchievements.map(ach => ({
-      ...ach,
-      timeInSeconds: timeToSeconds(ach.time)
-    }));
+    return animeAchievements.map(ach => ({ ...ach, timeInSeconds: timeToSeconds(ach.time) }));
   }, [animeAchievements]);
 
-  // Проверка достижений (Используем хук achievements)
+  // Проверка достижений
   useEffect(() => {
     if (relevantAchievements.length === 0) return;
-
     const check = setInterval(() => {
       if (videoRef.current && isPlaying) {
         const time = Math.floor(videoRef.current.currentTime);
@@ -71,7 +66,6 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
             if (!unlockedAchievementsRef.current.has(ach.title)) {
               setNewAchievement(ach);
               unlockedAchievementsRef.current.add(ach.title);
-              // СОХРАНЯЕМ В НАШ НОВЫЙ ХУК!
               if (achievements && achievements.unlockAchievement) {
                 achievements.unlockAchievement(ach.title, ach.title, ach.desc, ach.image);
               }
@@ -80,7 +74,6 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
         });
       }
     }, 1000);
-    
     return () => clearInterval(check);
   }, [relevantAchievements, isPlaying, achievements]);
 
@@ -93,13 +86,12 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
     const fetchVideo = async () => {
       try {
         const titlesArray = [anime.title.romaji, anime.title.english, anime.title.native].filter(Boolean);
-        
         if (window.api && window.api.getVideoLink) {
           const link = await window.api.getVideoLink(titlesArray, episode);
           if (link && isMounted) {
             setVideoSrc(link);
             setIsTestVideo(false);
-            setIsLoadingVideo(false)
+            setIsLoadingVideo(false);
           } else {
             if (isMounted) {
               setError("Видео не найдено. Возможно, этой серии нет на AniLibria.");
@@ -128,19 +120,16 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
   useEffect(() => {
     if (!videoSrc || !videoRef.current) return;
     let hls;
-
     if (Hls.isSupported()) {
       hls = new Hls({ startLevel: -1 });
       hls.loadSource(videoSrc);
       hls.attachMedia(videoRef.current);
-      
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         if (initialTimeRef.current > 0 && videoRef.current) {
           videoRef.current.currentTime = initialTimeRef.current;
         }
         videoRef.current?.play().catch(() => setIsPlaying(false));
       });
-      
       hls.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) {
           switch (data.type) {
@@ -159,9 +148,7 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
         videoRef.current?.play().catch(() => setIsPlaying(false));
       });
     }
-
     return () => { if (hls) hls.destroy(); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoSrc]);
 
   // Сохранение таймкода
@@ -247,6 +234,8 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
     return `${h > 0 ? h + ':' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  const isEnding = duration > 0 && progress > 0 && (duration - progress) <= 90;
+
   return (
     <div id="player-container" className="fixed inset-0 bg-black z-50 flex flex-col" onMouseMove={handleMouseMove}>
       <div id="video-controls" className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-black/90 to-transparent z-20 transition-opacity duration-300">
@@ -279,6 +268,11 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onClick={togglePlay}
+            onEnded={() => {
+              if (onNextEpisode && episode < totalEpisodes) {
+                onNextEpisode(episode + 1);
+              }
+            }}
             crossOrigin="anonymous"
           />
         )}
@@ -288,12 +282,35 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
             <Play size={40} className="ml-2" fill="currentColor" />
           </button>
         )}
+
+        <AnimatePresence>
+          {isEnding && episode < totalEpisodes && (
+            <motion.button
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.9 }}
+              onClick={() => onNextEpisode && onNextEpisode(episode + 1)}
+              className="absolute bottom-24 right-8 z-30 flex items-center gap-3 px-6 py-4 bg-black/70 hover:bg-purple-600/90 backdrop-blur-md border border-white/20 hover:border-purple-400/50 rounded-2xl text-white font-bold text-lg transition-all shadow-2xl group cursor-pointer"
+            >
+              {/* ВОТ ТУТ ТЕКСТ С НОМЕРОМ СЕРИИ */}
+              <span>Переход на следующую серию ({episode + 1})</span>
+              <SkipForward size={24} className="group-hover:translate-x-1 transition-transform" />
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
       <div id="video-controls-bottom" className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 to-transparent z-20 transition-opacity duration-300">
         <div className="flex items-center gap-4 mb-4 text-xs font-mono text-slate-300">
           <span>{formatTime(progress)}</span>
-          <input type="range" min="0" max={duration || 100} value={progress} onChange={handleSeek} className="flex-1 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-purple-500" />
+          <input
+            type="range"
+            min="0"
+            max={duration || 100}
+            value={progress}
+            onChange={handleSeek}
+            className="flex-1 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-purple-500"
+          />
           <span>{formatTime(duration)}</span>
         </div>
 
@@ -302,16 +319,20 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
             <button onClick={togglePlay} className="text-white hover:text-purple-400 transition">
               {isPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
             </button>
-            
-            <button onClick={() => onNextEpisode && onNextEpisode(episode + 1)} className="text-white hover:text-purple-400 transition" title="Следующая серия">
-              <SkipForward size={24} fill="currentColor" />
-            </button>
 
             <div className="flex items-center gap-2 group">
               <button onClick={toggleMute} className="text-white hover:text-purple-400 transition">
                 {isMuted || volume === 0 ? <VolumeX size={24} /> : <Volume2 size={24} />}
               </button>
-              <input type="range" min="0" max="1" step="0.05" value={isMuted ? 0 : volume} onChange={handleVolumeChange} className="w-24 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="w-24 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-purple-500 opacity-0 group-hover:opacity-100 transition-opacity"
+              />
             </div>
           </div>
 
@@ -325,7 +346,12 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
 
             <AnimatePresence>
               {showSettings && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-12 right-10 w-64 bg-[#15151f] border border-[#2a2a3a] rounded-xl overflow-hidden shadow-2xl z-50">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute bottom-12 right-10 w-64 bg-[#15151f] border border-[#2a2a3a] rounded-xl overflow-hidden shadow-2xl z-50"
+                >
                   {settingsTab === 'main' ? (
                     <div className="p-2">
                       <button onClick={() => setSettingsTab('speed')} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 rounded-lg text-sm text-white transition">
@@ -352,7 +378,10 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
         </div>
       </div>
 
-      <AchievementToast achievement={newAchievement} onClose={() => setNewAchievement(null)} />
+      <AchievementToast 
+        achievement={newAchievement} 
+        onClose={() => setNewAchievement(null)} 
+      />
     </div>
   );
 }
