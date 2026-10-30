@@ -1,5 +1,5 @@
 // src/api/shikimori.js
-const URL = 'https://shikimori.io/api/graphql';
+const URL = 'https://obxodanibox.sfasfasfa219.workers.dev';
 
 async function gql(query, variables) {
   const res = await fetch(URL, {
@@ -17,31 +17,39 @@ async function gql(query, variables) {
   return json.data;
 }
 
-// Утилита для правильного пути картинки
 function getImageUrl(poster) {
   if (!poster || !poster.originalUrl) return '';
   const url = poster.originalUrl;
   return url.startsWith('http') ? url : `https://shikimori.one${url}`;
 }
 
-// Адаптер: превращает данные Shikimori в формат AniList
+// ФИЛЬТР: Убираем хентай и жесткое эччи
+function filterSafeAnime(animes) {
+  if (!animes) return [];
+  return animes.filter(anime => {
+    if (anime.rating === 'rx' || anime.rating === 'r_plus') return false;
+    if (anime.genres && anime.genres.some(g => g.name === 'Hentai' || g.russian === 'Хентай')) return false;
+    return true;
+  });
+}
+
 function mapAnime(anime) {
+  if (!anime) return null;
   const img = getImageUrl(anime.poster);
+  const realEpisodes = anime.episodes || anime.episodesAired || null;
   
   return {
     id: anime.id,
+    type: 'ANIME',
     title: { 
       romaji: anime.name, 
       english: anime.name, 
       native: anime.russian || anime.name 
     },
-    coverImage: { 
-      extraLarge: img, 
-      large: img 
-    },
+    coverImage: { extraLarge: img, large: img },
     bannerImage: null,
     description: anime.description || 'Описание отсутствует',
-    episodes: anime.episodes,
+    episodes: realEpisodes,
     seasonYear: anime.airedOn?.year || null,
     format: anime.kind ? anime.kind.toUpperCase() : 'TV',
     status: anime.status === 'released' ? 'FINISHED' : anime.status === 'ongoing' ? 'RELEASING' : 'FINISHED',
@@ -50,125 +58,111 @@ function mapAnime(anime) {
   };
 }
 
-// 1. Поиск
 export async function searchAnime(search, page = 1) {
   const query = `
     query ($search: String, $page: Int) {
-      animes(search: $search, limit: 24, page: $page, kind: "!special") {
-        id name russian poster { originalUrl } episodes airedOn { year } kind status score
+      animes(search: $search, limit: 30, page: $page, kind: "!special") {
+        id name russian poster { originalUrl } episodes episodesAired airedOn { year } kind status score rating
         genres { russian name }
       }
     }
   `;
   const data = await gql(query, { search, page });
-  return data.animes.map(mapAnime);
+  return filterSafeAnime(data.animes).slice(0, 24).map(mapAnime);
 }
 
-// 2. Главная страница (Тренды/Популярное)
 export async function getTrending() {
   const query = `
     query {
-      animes(limit: 24, status: "ongoing", order: popularity) {
-        id name russian poster { originalUrl } episodes airedOn { year } kind status score
+      animes(limit: 30, status: "ongoing", order: popularity) {
+        id name russian poster { originalUrl } description episodes episodesAired airedOn { year } kind status score rating
         genres { russian name }
       }
     }
   `;
   const data = await gql(query, {});
-  return data.animes.map(mapAnime);
+  return filterSafeAnime(data.animes).slice(0, 24).map(mapAnime);
 }
 
-// 3. Детали аниме (для карточки)
 export async function getAnimeDetails(id) {
   const query = `
     query ($id: String) {
-      anime(id: $id) {
-        id name russian poster { originalUrl } description episodes airedOn { year } kind status score
+      animes(ids: $id, limit: 1) {
+        id name russian poster { originalUrl } description episodes episodesAired airedOn { year } kind status score rating nextEpisodeAt
         genres { russian name }
-        related {
-          anime { id name russian poster { originalUrl } episodes airedOn { year } kind status }
-        }
       }
     }
   `;
   const data = await gql(query, { id: String(id) });
-  const raw = data.anime;
-  const mapped = mapAnime(raw);
   
-  const relations = [];
-  if (raw.related) {
-    raw.related.forEach(rel => {
-      if (rel.anime) {
-        relations.push({ relationType: 'SEQUEL', node: mapAnime(rel.anime) });
-      }
-    });
-  }
+  if (!data || !data.animes || data.animes.length === 0) return null;
+  
+  // Если это хентай, не показываем его
+  const safeAnime = filterSafeAnime(data.animes);
+  if (safeAnime.length === 0) return null;
 
   return {
-    ...mapped,
-    relations: { edges: relations },
+    ...mapAnime(safeAnime[0]),
+    nextEpisodeAt: safeAnime[0].nextEpisodeAt,
+    relations: { edges: [] },
     recommendations: { nodes: [] } 
   };
 }
 
-// 4. Рандом
 export async function getRandomAnime() {
   const query = `
     query {
       animes(limit: 50, order: popularity) {
-        id name russian poster { originalUrl } episodes airedOn { year } kind status score
+        id name russian poster { originalUrl } episodes episodesAired airedOn { year } kind status score rating
         genres { russian name }
       }
     }
   `;
   const data = await gql(query, {});
-  const randomIndex = Math.floor(Math.random() * data.animes.length);
-  return mapAnime(data.animes[randomIndex]);
+  const safe = filterSafeAnime(data.animes);
+  const randomIndex = Math.floor(Math.random() * safe.length);
+  return mapAnime(safe[randomIndex]);
 }
 
-// 5. Топ 100 (Лидерборд)
 export async function getTopAnime() {
   const query = `
     query {
       animes(limit: 100, order: ranked) {
-        id name russian poster { originalUrl } episodes airedOn { year } kind status score
+        id name russian poster { originalUrl } episodes episodesAired airedOn { year } kind status score rating
         genres { russian name }
       }
     }
   `;
   const data = await gql(query, {});
-  return data.animes.map(mapAnime);
+  return filterSafeAnime(data.animes).map(mapAnime);
 }
 
-// 6. Каталог
 export async function getCatalog(page = 1) {
   const query = `
     query ($page: Int) {
-      animes(limit: 24, page: $page, order: popularity) {
-        id name russian poster { originalUrl } episodes airedOn { year } kind status score
+      animes(limit: 30, page: $page, order: popularity) {
+        id name russian poster { originalUrl } episodes episodesAired airedOn { year } kind status score rating
         genres { russian name }
       }
     }
   `;
   const data = await gql(query, { page });
-  return data.animes.map(mapAnime);
+  return filterSafeAnime(data.animes).slice(0, 24).map(mapAnime);
 }
 
-// 7. Расписание (онгоинги)
 export async function getAiringSchedule() {
   const query = `
     query {
-      animes(limit: 30, status: "ongoing", order: popularity) {
-        id name russian poster { originalUrl } episodes airedOn { year } kind status score
+      animes(limit: 40, status: "ongoing", order: popularity) {
+        id name russian poster { originalUrl } episodes episodesAired airedOn { year } kind status score rating
         genres { russian name }
       }
     }
   `;
   const data = await gql(query, {});
-  return data.animes.map(mapAnime);
+  return filterSafeAnime(data.animes).slice(0, 30).map(mapAnime);
 }
 
-// Дубликат для совместимости
 export async function getSchedule() {
   return getAiringSchedule();
 }

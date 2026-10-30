@@ -23,12 +23,12 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // 1. Обработчик смены темы
+  // 1. Смена темы
   ipcMain.handle('set-theme', (event, theme) => {
-    nativeTheme.themeSource = theme; // 'dark', 'light' или 'system'
+    nativeTheme.themeSource = theme;
   });
 
-  // 2. Обработчик для Достижений
+  // 2. Достижения
   ipcMain.handle('get-achievements', async (event, animeId) => {
     try {
       const filePath = path.join(__dirname, `../src/data/achievements/${animeId}.json`);
@@ -37,58 +37,66 @@ app.whenReady().then(() => {
         return JSON.parse(data);
       }
       return [];
-    } catch (error) {
-      console.error('Ошибка чтения ачивок:', error);
-      return [];
-    }
+    } catch (error) { return []; }
   });
 
-  // 3. Обработчик для Видео (AniLibria v1 API)
+  // 3. Получение русского названия
+  ipcMain.handle('get-ru-title', async (event, titles) => {
+    try {
+      for (const title of titles) {
+        if (!title) continue;
+        const url = `https://anilibria.top/api/v1/app/search/releases?query=${encodeURIComponent(title)}`;
+        const res = await fetch(url).then(r => r.json());
+        if (res && res.length > 0 && res[0].name && res[0].name.main) {
+          return res[0].name.main;
+        }
+      }
+      return null;
+    } catch (error) { return null; }
+  });
+
+  // 4. Получение озвучек AniLibria
+  ipcMain.handle('get-anilibria-release', async (event, titles, year) => {
+    try {
+      for (const title of titles) {
+        if (!title) continue;
+        const searchUrl = `https://anilibria.top/api/v1/app/search/releases?query=${encodeURIComponent(title)}`;
+        const res = await fetch(searchUrl).then(r => r.json());
+        if (res && res.length > 0) {
+          const releaseId = res[0].id;
+          const releaseUrl = `https://anilibria.top/api/v1/anime/releases/${releaseId}`;
+          const releaseData = await fetch(releaseUrl).then(r => r.json());
+          return releaseData; 
+        }
+      }
+      return null;
+    } catch (error) { return null; }
+  });
+
+  // 5. Ссылка на видео AniLibria
   ipcMain.handle('get-video-link', async (event, titlesArray, episode) => {
     try {
       let foundRelease = null;
-
-      // Ищем релиз по названию
       for (const title of titlesArray) {
         if (!title) continue;
         const searchUrl = `https://anilibria.top/api/v1/app/search/releases?query=${encodeURIComponent(title)}`;
         const res = await fetch(searchUrl).then(r => r.json());
-        
-        if (res && res.length > 0) {
-          foundRelease = res[0];
-          break;
-        }
+        if (res && res.length > 0) { foundRelease = res[0]; break; }
       }
-
       if (!foundRelease) return null;
 
-      // Получаем полную информацию о релизе
       const releaseUrl = `https://anilibria.top/api/v1/anime/releases/${foundRelease.id}`;
       const releaseData = await fetch(releaseUrl).then(r => r.json());
-
       if (!releaseData.episodes || releaseData.episodes.length === 0) return null;
 
-      // Ищем нужную серию
       const targetEpisode = releaseData.episodes.find(ep => ep.ordinal === episode) || releaseData.episodes[0];
       const hlsUrl = targetEpisode.hls_1080 || targetEpisode.hls_720 || targetEpisode.hls_480;
-
-      if (hlsUrl) {
-        return hlsUrl.startsWith('//') ? `https:${hlsUrl}` : hlsUrl;
-      }
-      return null;
-    } catch (error) {
-      console.error('Ошибка при поиске видео на AniLibria:', error);
-      return null;
-    }
+      return hlsUrl ? (hlsUrl.startsWith('//') ? `https:${hlsUrl}` : hlsUrl) : null;
+    } catch (error) { return null; }
   });
 
   createWindow();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

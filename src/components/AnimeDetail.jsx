@@ -18,10 +18,9 @@ const buildWatchOrder = (startAnime) => {
   const allParts = new Map();
   allParts.set(startAnime.id, startAnime);
 
-  // Собираем все прямые связи из AniList
+  // Собираем все прямые связи
   if (startAnime.relations && startAnime.relations.edges) {
     startAnime.relations.edges.forEach(edge => {
-      // Берем вообще все аниме-связи (сиквелы, приквелы, фильмы, спешлы, спин-оффы)
       if (edge.node && edge.node.type === 'ANIME') {
         if (!allParts.has(edge.node.id)) {
           allParts.set(edge.node.id, edge.node);
@@ -47,12 +46,8 @@ const buildWatchOrder = (startAnime) => {
     const weightA = formatWeight[a.format] || 8;
     const weightB = formatWeight[b.format] || 8;
 
-    // Если формат разный, сортируем по весу (TV в первую очередь)
-    if (weightA !== weightB) {
-      return weightA - weightB;
-    }
+    if (weightA !== weightB) return weightA - weightB;
 
-    // Если формат одинаковый (например, два фильма), сортируем по году
     const yearA = a.seasonYear || 9999;
     const yearB = b.seasonYear || 9999;
     if (yearA !== yearB) return yearA - yearB;
@@ -76,27 +71,44 @@ export default function AnimeDetail({ id, onClose, library, onOpen }) {
 
   useEffect(() => {
     setLoading(true);
-    getAnimeDetails(id).then(data => {
-      if (!data) return setLoading(false);
-      setAnime(data); 
-      setLoading(false); 
-      
-      const isAdult = data.isAdult || data.genres?.includes('Ecchi') || data.genres?.includes('Hentai');
-      if (isAdult && !ageConfirmed) setShowAgeWarning(true);
+    getAnimeDetails(id)
+      .then(data => {
+        if (!data) {
+          setLoading(false);
+          return;
+        }
+        setAnime(data); 
+        setLoading(false); 
+        
+        const isAdult = data.genres?.includes('Ecchi') || data.genres?.includes('Hentai');
+        if (isAdult && !ageConfirmed) setShowAgeWarning(true);
 
-      if (data.description) translateText(data.description.replace(/<[^>]*>/g, '')).then(setRuDescription);
-      
-      if (window.api) {
-        window.api.getRuTitle([data.title.english, data.title.romaji, data.title.native]).then(res => {
-          if (res && /[а-яА-ЯЁё]/.test(res)) setRuTitle(res);
-        });
+        // Очищаем описание от HTML и BBCode перед отправкой на перевод
+        if (data.description) {
+          const cleanDesc = data.description
+            .replace(/<[^>]*>/g, '')
+            .replace(/\[\/?.*?\]/g, '')
+            .replace(/\n/g, ' ');
+          translateText(cleanDesc).then(setRuDescription);
+        }
+        
+        if (window.api) {
+          window.api.getRuTitle([data.title.english, data.title.romaji, data.title.native]).then(res => {
+            if (res && /[а-яА-ЯЁё]/.test(res)) setRuTitle(res);
+          }).catch(console.error);
 
-        const titles = [data.title.english, data.title.romaji, data.title.native].filter(Boolean);
-        window.api.getAnilibriaRelease(titles, data.seasonYear).then(release => {
-          if (release && release.team) setDubs(release.team);
-        });
-      }
-    }).catch(() => setLoading(false));
+          const titles = [data.title.english, data.title.romaji, data.title.native].filter(Boolean);
+          if (window.api.getAnilibriaRelease) {
+            window.api.getAnilibriaRelease(titles, data.seasonYear).then(release => {
+              if (release && release.team) setDubs(release.team);
+            }).catch(console.error);
+          }
+        }
+      })
+      .catch(err => {
+        console.error("Ошибка при загрузке деталей аниме:", err);
+        setLoading(false);
+      });
   }, [id]);
 
   useEffect(() => {
@@ -105,11 +117,12 @@ export default function AnimeDetail({ id, onClose, library, onOpen }) {
   }, [playingEpisode]);
 
   if (loading) return <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"><Loader2 size={48} className="text-purple-500 animate-spin" /></div>;
-   if (!anime) return (
+
+  if (!anime) return (
     <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-6 text-center">
       <AlertTriangle size={64} className="text-red-500 mb-6" />
       <h2 className="text-2xl font-bold text-white mb-2">Не удалось загрузить аниме</h2>
-      <p className="text-slate-400 max-w-md mb-8">AniList API заблокирован или недоступен. Попробуйте включить/выключить VPN (OnionHop) и нажать «Обновить».</p>
+      <p className="text-slate-400 max-w-md mb-8">API Shikimori не отвечает или аниме не найдено. Проверьте консоль (F12) для деталей.</p>
       <div className="flex gap-4">
         <button onClick={onClose} className="px-6 py-3 bg-[#1f1f2e] hover:bg-[#2a2a3e] rounded-xl font-bold text-white transition">Закрыть</button>
         <button onClick={() => window.location.reload()} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold text-white transition">Обновить</button>
@@ -135,16 +148,20 @@ export default function AnimeDetail({ id, onClose, library, onOpen }) {
   const inLib = library.items[anime.id];
   const isFav = inLib?.isFavorite;
 
-  let totalEpisodes = anime.episodes;
+  // Умный подсчет серий
+  let totalEpisodes = anime.episodes || anime.episodesAired;
   if (!totalEpisodes) {
-    if (anime.format === 'MOVIE') totalEpisodes = 1;
-    else if (anime.nextAiringEpisode) totalEpisodes = anime.nextAiringEpisode.episode - 1;
-    else totalEpisodes = 100;
+    if (anime.format === 'MOVIE') {
+      totalEpisodes = 1;
+    } else {
+      totalEpisodes = 24; // Дефолт, если вообще нет данных
+    }
   }
-  if (totalEpisodes === 0) totalEpisodes = 1;
 
   const episodesArray = Array.from({ length: totalEpisodes }, (_, i) => i + 1);
-  const nextEpDate = anime.nextAiringEpisode ? new Date(anime.nextAiringEpisode.airingAt * 1000).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : null;
+  
+  // Дата следующей серии из Shikimori
+  const nextEpDate = anime.nextEpisodeAt ? new Date(anime.nextEpisodeAt).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : null;
   
   // Применяем наш универсальный алгоритм
   const franchise = buildWatchOrder(anime);
@@ -167,7 +184,6 @@ export default function AnimeDetail({ id, onClose, library, onOpen }) {
           <div className="relative h-[300px] overflow-hidden bg-transparent">
             {anime.bannerImage ? <img src={anime.bannerImage} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gradient-to-br from-purple-900 to-pink-900" />}
             
-            {/* Темный градиент снизу (всегда) для читаемости текста на баннере */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/40 to-transparent light:from-black/90 light:via-black/40"></div>
             
             <button onClick={onClose} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 hover:bg-red-500 flex items-center justify-center transition z-10 text-white"><X size={20} /></button>
@@ -199,9 +215,17 @@ export default function AnimeDetail({ id, onClose, library, onOpen }) {
                   </div>
                 )}
 
-                {nextEpDate && (
+                {/* Плашка с датой или заглушкой для онгоингов */}
+                {anime.status === 'RELEASING' && (
                   <div className="mt-4 inline-flex items-center gap-2 bg-purple-900/60 light:bg-purple-100 border border-purple-500/30 light:border-purple-300 px-3 py-1.5 rounded-lg text-xs text-purple-200 light:text-purple-800 backdrop-blur-sm">
-                    <Clock size={14} /> <span>Серия {anime.nextAiringEpisode.episode} выйдет: <span className="font-bold keep-white light:text-purple-900">{nextEpDate}</span></span>
+                    <Clock size={14} /> 
+                    <span>
+                      {nextEpDate ? (
+                        <>Серия {(anime.episodes || anime.episodesAired || 0) + 1} выйдет: <span className="font-bold keep-white light:text-purple-900 ml-1">{nextEpDate}</span></>
+                      ) : (
+                        <>Дата выхода следующей серии пока неизвестна</>
+                      )}
+                    </span>
                   </div>
                 )}
 

@@ -98,17 +98,17 @@ export default function Player({ anime, episode, onClose, onNextEpisode, initial
             setVideoSrc(link);
             setIsTestVideo(false);
           } else {
-            // Если ссылка не найдена, включаем тестовое видео
+            // Если ссылки нет, показываем ошибку, а не тестовое видео
             if (isMounted) {
-              setVideoSrc("https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
-              setIsTestVideo(true);
+              setError("Видео не найдено. Возможно, этой серии нет на AniLibria.");
+              setIsLoadingVideo(false);
             }
           }
         } else {
-           // Если API нет (например, запущено в браузере), включаем тест
+           // Если API вообще нет
            if (isMounted) {
-             setVideoSrc("https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
-             setIsTestVideo(true);
+             setError("Ошибка подключения к AniLibria.");
+             setIsLoadingVideo(false);
            }
         }
       } catch (err) {

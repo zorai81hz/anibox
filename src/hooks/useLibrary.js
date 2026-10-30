@@ -1,47 +1,80 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const STORAGE_KEY = 'anibox_library';
-const HISTORY_KEY = 'anibox_history';
+const CLOUD_URL = 'https://obxodanibox.sfasfasfa219.workers.dev/library';
 
 export function useLibrary() {
   const [items, setItems] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    } catch {
+      return {};
+    }
   });
 
-  const [history, setHistory] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; } catch { return []; }
-  });
+  // 1. Загрузка из облака при старте
+  useEffect(() => {
+    async function loadFromCloud() {
+      try {
+        console.log('🔄 Загрузка библиотеки из облака...');
+        const res = await fetch(CLOUD_URL);
+        const cloudData = await res.json();
+        
+        if (cloudData && Object.keys(cloudData).length > 0) {
+          console.log('✅ Данные из облака получены:', cloudData);
+          setItems(prev => ({ ...prev, ...cloudData }));
+        } else {
+          console.log('☁️ В облаке пока пусто.');
+        }
+      } catch (err) {
+        console.error('❌ Ошибка загрузки из облака:', err);
+      }
+    }
+    loadFromCloud();
+  }, []);
 
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }, [items]);
-  useEffect(() => { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); }, [history]);
+  // 2. Сохранение в localStorage и облако
+  useEffect(() => {
+    // Сохраняем локально
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 
+    // Отправляем в облако с задержкой
+    const timeout = setTimeout(async () => {
+      try {
+        console.log('📤 Отправка данных в облако...', items);
+        const res = await fetch(CLOUD_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(items)
+        });
+        const result = await res.json();
+        console.log('✅ Ответ от облака:', result);
+      } catch (err) {
+        console.error('❌ Ошибка отправки в облако:', err);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timeout);
+  }, [items]);
+
+  // --- Функции управления библиотекой ---
   const add = (anime, status = 'planning') => {
     setItems(prev => ({
       ...prev,
       [anime.id]: {
-        ...anime,
+        id: anime.id,
+        title: anime.title,
+        coverImage: anime.coverImage,
+        episodes: anime.episodes,
+        seasonYear: anime.seasonYear,
+        format: anime.format,
         status,
-        isFavorite: prev[anime.id]?.isFavorite || false,
         progress: prev[anime.id]?.progress || 0,
         addedAt: prev[anime.id]?.addedAt || Date.now(),
+        isFavorite: prev[anime.id]?.isFavorite || false,
         timestamps: prev[anime.id]?.timestamps || {},
       },
     }));
-  };
-
-  const toggleFavorite = (id) => {
-    setItems(prev => {
-      if (!prev[id]) return prev;
-      return { ...prev, [id]: { ...prev[id], isFavorite: !prev[id].isFavorite } };
-    });
-  };
-
-  const addHistory = (anime, episode, timestamp = 0) => {
-    setHistory(prev => {
-      const filtered = prev.filter(h => !(h.animeId === anime.id && h.episode === episode));
-      const newRecord = { animeId: anime.id, title: anime.title, coverImage: anime.coverImage, episode, timestamp, watchedAt: Date.now() };
-      return [newRecord, ...filtered].slice(0, 50);
-    });
   };
 
   const setStatus = (id, status) => {
@@ -59,31 +92,6 @@ export function useLibrary() {
     });
   };
 
-  const saveTimestamp = (id, episode, time) => {
-    setItems(prev => {
-      if (!prev[id]) return prev;
-      return { ...prev, [id]: { ...prev[id], timestamps: { ...(prev[id].timestamps || {}), [episode]: time } } };
-    });
-  };
-
-  const syncLibrary = (apiData) => {
-    setItems(prev => {
-      let changed = false;
-      const updated = { ...prev };
-      apiData.forEach(apiItem => {
-        if (updated[apiItem.id]) {
-          let realEps = apiItem.episodes;
-          if (!realEps && apiItem.nextAiringEpisode) realEps = apiItem.nextAiringEpisode.episode - 1;
-          if (realEps && updated[apiItem.id].episodes !== realEps) {
-            updated[apiItem.id] = { ...updated[apiItem.id], episodes: realEps };
-            changed = true;
-          }
-        }
-      });
-      return changed ? updated : prev;
-    });
-  };
-
   const remove = (id) => {
     setItems(prev => {
       const copy = { ...prev };
@@ -92,7 +100,29 @@ export function useLibrary() {
     });
   };
 
-  const clearHistory = () => setHistory([]);
+  const toggleFavorite = (id) => {
+    setItems(prev => {
+      if (!prev[id]) return prev;
+      return { ...prev, [id]: { ...prev[id], isFavorite: !prev[id].isFavorite } };
+    });
+  };
 
-  return { items, history, add, toggleFavorite, addHistory, setStatus, setProgress, saveTimestamp, remove, syncLibrary, clearHistory };
+  const saveTimestamp = (id, episode, time) => {
+    setItems(prev => {
+      if (!prev[id]) return prev;
+      return {
+        ...prev,
+        [id]: {
+          ...prev[id],
+          timestamps: { ...prev[id].timestamps, [episode]: time }
+        }
+      };
+    });
+  };
+
+  const addHistory = (anime, episode) => {
+    // Тут можно оставить пустым, если история не нужна, или дописать логику
+  };
+
+  return { items, add, setStatus, setProgress, remove, toggleFavorite, saveTimestamp, addHistory };
 }

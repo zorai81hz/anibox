@@ -82,3 +82,22 @@ html.light button[class*="bg-purple-600"] svg { color: #ffffff !important; fill:
 
 /* Плеер всегда темный */
 html.light .fixed.inset-0.bg-black.z-\[100\] { background-color: #000000 !important; }
+.force-white { color: #ffffff !important; }
+.force-slate { color: #cbd5e1 !important; }
+/* ==================== ФИКС БАННЕРА ==================== */
+/* Оставляем желтую звезду рейтинга */
+html.light .keep-star {
+  color: #facc15 !important;
+}
+
+/* Текст на баннере всегда белый */
+html.light .keep-white,
+html.light .keep-white span {
+  color: #ffffff !important;
+}
+
+/* Кнопка Подробнее (чтобы текст был белым, а фон темным) */
+html.light .keep-white-btn {
+  color: #ffffff !important;
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
