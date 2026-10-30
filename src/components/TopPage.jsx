@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getTopAnime } from '../api/anilist';
+import { getTopAnime } from '../api/shikimori';
 import AnimeCard from './AnimeCard';
 import { motion } from 'framer-motion';
 import { Trophy } from 'lucide-react';

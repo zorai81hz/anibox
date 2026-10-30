@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getTrending } from '../api/anilist';
+import { getTrending } from '../api/shikimori';
 import AnimeCard from './AnimeCard';
 import { Loader2, AlertCircle, RefreshCw, Play, Info, ChevronLeft, ChevronRight } from 'lucide-react';
 import { translateText } from '../utils/translations';

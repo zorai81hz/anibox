@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getCatalog } from '../api/anilist';
+import { getCatalog } from '../api/shikimori';
 import AnimeCard from './AnimeCard';
 import AnimeCardSkeleton from './AnimeCardSkeleton';
 import { ChevronLeft, ChevronRight, SlidersHorizontal, RefreshCcw } from 'lucide-react';

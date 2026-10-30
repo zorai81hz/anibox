@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Clock } from 'lucide-react';
-import { getAiringSchedule } from '../api/anilist';
+import { getAiringSchedule } from '../api/shikimori';
 
 export default function SchedulePage({ onOpen }) {
   const [schedule, setSchedule] = useState([]);

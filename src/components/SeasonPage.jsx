@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getSeasonAnime } from '../api/anilist';
+import { getSeasonAnime } from '../api/shikimori';
 import AnimeCard from './AnimeCard';
 import { motion } from 'framer-motion';
 import { Flame } from 'lucide-react';

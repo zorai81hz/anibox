@@ -41,12 +41,13 @@ body {
   overflow: hidden;
 }
 
-/* ==================== СВЕТЛАЯ ТЕМА (ФИНАЛ) ==================== */
+/* ==================== СВЕТЛАЯ ТЕМА (БОЕВОЙ РЕЖИМ) ==================== */
 html.light body {
   background-color: #f1f5f9 !important;
+  color: #0f172a !important;
 }
 
-/* 1. Убиваем ВСЕ темные фоны */
+/* Убиваем темные фоны */
 html.light [class*="bg-[#0a0a0f]"],
 html.light [class*="bg-[#0f0f17]"],
 html.light [class*="bg-[#15151f]"],
@@ -56,63 +57,28 @@ html.light [class*="bg-[#1f1f2e]"] {
   border-color: #e2e8f0 !important;
 }
 
-/* 2. ВЕСЬ текст делаем темным (включая белый) */
-html.light [class*="text-white"],
-html.light [class*="text-slate-100"],
-html.light [class*="text-slate-200"],
-html.light [class*="text-slate-300"],
-html.light [class*="text-slate-400"],
-html.light [class*="text-slate-500"] {
+/* ЖЕСТКО ДЕЛАЕМ ТЕКСТ ЧЕРНЫМ ВО ВСЕХ КАРТОЧКАХ И САЙДБАРЕ */
+html.light .text-white,
+html.light .text-slate-100,
+html.light .text-slate-200,
+html.light .text-slate-300,
+html.light .text-slate-400,
+html.light .text-slate-500,
+html.light [class*="text-"] {
   color: #0f172a !important;
 }
 
-/* 3. Логотип AniBox (в сайдбаре) */
-html.light h1[class*="bg-gradient-to-r"] {
-  background-image: none !important;
-  color: #7c3aed !important;
-  -webkit-text-fill-color: #7c3aed !important;
-}
-
-/* 4. Активный пункт в Сайдбаре (фиолетовая обводка) */
-html.light button[class*="bg-purple-500/20"] {
-  background-color: #f3e8ff !important;
-  color: #7c3aed !important;
-  border: 1px solid #d8b4fe !important;
-}
-
-/* 5. Кнопки */
-html.light button[class*="bg-[#1f1f2e]"] {
-  background-color: #f8fafc !important;
-  border: 1px solid #e2e8f0 !important;
-}
-html.light button[class*="bg-[#1f1f2e]"] svg {
-  color: #0f172a !important;
-  fill: none !important;
-}
-html.light button[class*="bg-purple-600"] {
-  background-color: #7c3aed !important;
-}
-html.light button[class*="bg-purple-600"] svg {
-  color: #ffffff !important;
-  fill: #ffffff !important;
-}
-
-/* 6. Чекбоксы */
-html.light input[type="checkbox"] {
-  accent-color: #7c3aed !important;
-}
-
-/* 7. БАННЕР: оставляем темный градиент, текст белый (благодаря keep-white) */
-html.light [class*="from-[#0a0a0f]"] {
-  background-image: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%) !important;
-}
-
-/* keep-white - принудительно белый текст для элементов на баннере */
-html.light .keep-white {
+/* Делаем исключение только для текста на баннерах (там где keep-white) */
+html.light .keep-white,
+html.light .keep-white span {
   color: #ffffff !important;
 }
 
-/* 8. Плеер всегда темный */
-html.light .fixed.inset-0.bg-black.z-\[100\] {
-  background-color: #000000 !important;
-}
+/* Фикс кнопок */
+html.light button[class*="bg-[#1f1f2e]"] { background-color: #f8fafc !important; border: 1px solid #e2e8f0 !important; }
+html.light button[class*="bg-[#1f1f2e]"] svg { color: #0f172a !important; fill: none !important; }
+html.light button[class*="bg-purple-600"] { background-color: #7c3aed !important; }
+html.light button[class*="bg-purple-600"] svg { color: #ffffff !important; fill: #ffffff !important; }
+
+/* Плеер всегда темный */
+html.light .fixed.inset-0.bg-black.z-\[100\] { background-color: #000000 !important; }

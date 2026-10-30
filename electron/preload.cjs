@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('api', {
   getAchievements: (animeId, episode) => ipcRenderer.invoke('get-achievements', animeId, episode),
   generateAchievements: (animeId, episode, subsUrl, title, desc) => ipcRenderer.invoke('generate-achievements', animeId, episode, subsUrl, title, desc),
   translateTitlesAI: (titles) => ipcRenderer.invoke('translate-titles-ai', titles),
+  setTheme: (theme) => ipcRenderer.invoke('set-theme', theme),
   clearCache: () => ipcRenderer.invoke('clear-cache'),
   getAchievements: (animeId) => ipcRenderer.invoke('get-achievements', animeId),
   getRuTitle: (titles) => ipcRenderer.invoke('get-ru-title', titles),

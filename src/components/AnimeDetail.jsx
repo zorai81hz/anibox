@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getAnimeDetails } from '../api/anilist';
+import { getAnimeDetails } from '../api/shikimori';
 import { X, Play, Plus, Star, Calendar, Tv, MonitorPlay, Loader2, Clock, AlertTriangle, Check, ChevronDown, Trash2, Heart, Mic2, Info } from 'lucide-react';
 import Player from './Player';
 import { translateFormat, translateStatus, translateText } from '../utils/translations';

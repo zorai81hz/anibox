@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { searchAnime } from '../api/anilist';
+import { searchAnime } from '../api/shikimori';
 import AnimeCard from './AnimeCard';
 import { getSearchQuery } from '../utils/translations'; // Импортируем функцию
 
